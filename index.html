@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1769e0">
+  <title>Quản lý chấm công</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <a class="brand" href="#" aria-label="Trang chủ">
+        <span class="brand-mark"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span class="brand-copy"><strong>Chấm Công</strong><small>WORKSPACE</small></span>
+      </a>
+      <div class="workspace-label">KHÔNG GIAN LÀM VIỆC</div>
+      <nav class="nav-menu" aria-label="Menu chính">
+        <button class="nav-link active" data-page="dashboard"><span class="nav-icon">⌂</span><span>Tổng quan</span></button>
+        <button class="nav-link" data-page="attendance"><span class="nav-icon">▦</span><span>Chấm công</span><span class="nav-count">Mới</span></button>
+        <button class="nav-link" data-page="employees"><span class="nav-icon">♙</span><span>Nhân viên</span></button>
+        <button class="nav-link" data-page="reports"><span class="nav-icon">▥</span><span>Thống kê & báo cáo</span></button>
+        <button class="nav-link" data-page="settings"><span class="nav-icon">⚙</span><span>Cài đặt</span></button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="help-card"><div class="help-icon">✦</div><strong>Đang dùng bản mẫu</strong><p>Dữ liệu minh họa, chưa kết nối máy chủ.</p><button id="learnMore" class="help-link">Tìm hiểu thêm <span>↗</span></button></div>
+        <div class="profile"><div class="avatar">AD</div><div class="profile-copy"><strong>Quản trị viên</strong><small>Bản xem trước</small></div><button class="dots" aria-label="Tùy chọn">•••</button></div>
+      </div>
+    </aside>
+
+    <main class="main-area">
+      <header class="topbar">
+        <button class="icon-button menu-toggle" id="menuToggle" aria-label="Mở menu">☰</button>
+        <div class="breadcrumb"><span>Workspace</span><span class="crumb-slash">/</span><strong id="breadcrumbTitle">Tổng quan</strong></div>
+        <div class="topbar-actions">
+          <label class="search-box"><span>⌕</span><input id="globalSearch" type="search" placeholder="Tìm nhân viên, mã nhân viên..." aria-label="Tìm kiếm"></label>
+          <button class="icon-button notification" aria-label="Thông báo">♧<i></i></button>
+          <div class="top-avatar">AD</div>
+        </div>
+      </header>
+
+      <div class="page-content">
+        <section class="page-heading">
+          <div><div class="eyebrow"><span class="live-dot"></span> TỔNG QUAN HỆ THỐNG</div><h1 id="pageTitle">Chào bạn, Admin <span class="wave">✦</span></h1><p id="pageSubtitle">Theo dõi tình hình chấm công và nhân sự của bạn tại một nơi.</p></div>
+          <div class="heading-date"><span class="date-icon">▦</span><div><strong id="todayLabel">Hôm nay</strong><small id="fullDate"></small></div></div>
+        </section>
+
+        <section class="stats-grid" aria-label="Thống kê nhanh">
+          <article class="stat-card stat-blue"><div class="stat-top"><span>Tổng nhân viên</span><span class="stat-icon">♙</span></div><div class="stat-value" id="totalEmployees">25</div><div class="stat-foot"><span class="trend">↗ 8.5%</span><span>so với tháng trước</span></div><div class="stat-line blue-line"></div></article>
+          <article class="stat-card stat-green"><div class="stat-top"><span>Có mặt hôm nay</span><span class="stat-icon">✓</span></div><div class="stat-value" id="presentCount">18</div><div class="stat-foot"><span class="trend">↗ 4.2%</span><span>tỷ lệ chuyên cần</span></div><div class="stat-line green-line"></div></article>
+          <article class="stat-card stat-orange"><div class="stat-top"><span>Đi muộn</span><span class="stat-icon">◷</span></div><div class="stat-value" id="lateCount">2</div><div class="stat-foot"><span class="trend neutral">Trong hôm nay</span></div><div class="stat-line orange-line"></div></article>
+          <article class="stat-card stat-red"><div class="stat-top"><span>Vắng mặt</span><span class="stat-icon">×</span></div><div class="stat-value" id="absentCount">5</div><div class="stat-foot"><span class="trend neutral">Cần kiểm tra</span></div><div class="stat-line red-line"></div></article>
+        </section>
+
+        <section class="content-grid">
+          <article class="panel attendance-panel" id="attendancePanel">
+            <div class="panel-header"><div><h2 id="tableTitle">Bảng chấm công hôm nay</h2><p>Thông tin chấm công gần nhất của nhân viên</p></div><button class="primary-button" id="addAttendanceBtn"><span>＋</span> Thêm chấm công</button></div>
+            <div class="table-toolbar"><div class="filter-tabs"><button class="filter-tab selected" data-filter="all">Tất cả <span id="allTabCount">8</span></button><button class="filter-tab" data-filter="Có mặt">Có mặt</button><button class="filter-tab" data-filter="Đi muộn">Đi muộn</button><button class="filter-tab" data-filter="Vắng mặt">Vắng mặt</button></div><div class="toolbar-right"><label class="date-input"><span>▦</span><input type="date" id="dateFilter" aria-label="Chọn ngày"></label><button class="outline-button" id="exportBtn">⇩ <span>Xuất CSV</span></button></div></div>
+            <div class="table-wrap"><table><thead><tr><th>NHÂN VIÊN</th><th>PHÒNG BAN</th><th>GIỜ VÀO</th><th>GIỜ RA</th><th>TRẠNG THÁI</th><th class="action-col">THAO TÁC</th></tr></thead><tbody id="attendanceRows"></tbody></table><div class="empty-state hidden" id="emptyState"><div>⌕</div><strong>Không tìm thấy dữ liệu</strong><p>Thử đổi từ khóa hoặc bộ lọc của bạn.</p></div></div>
+            <div class="table-footer"><span id="resultCount">Hiển thị 8 nhân viên</span><div class="pagination"><button disabled aria-label="Trang trước">‹</button><button class="page-number">1</button><button disabled aria-label="Trang sau">›</button></div></div>
+          </article>
+          <aside class="right-column">
+            <article class="panel summary-panel"><div class="panel-header compact"><div><h2>Tỷ lệ chuyên cần</h2><p>Tổng quan hôm nay</p></div><button class="more-button" aria-label="Tùy chọn">•••</button></div><div class="donut-wrap"><div class="donut"><div class="donut-center"><strong id="attendanceRate">72%</strong><span>Có mặt</span></div></div><div class="legend"><div><i class="legend-dot green"></i><span>Có mặt</span><strong id="legendPresent">18</strong></div><div><i class="legend-dot orange"></i><span>Đi muộn</span><strong id="legendLate">2</strong></div><div><i class="legend-dot red"></i><span>Vắng mặt</span><strong id="legendAbsent">5</strong></div></div></div><div class="summary-bottom"><span>Chỉ số chuyên cần</span><strong>Khá tốt <span>↗</span></strong></div></article>
+            <article class="panel activity-panel"><div class="panel-header compact"><div><h2>Hoạt động gần đây</h2><p>Cập nhật trong ngày</p></div><span class="activity-live"></span></div><div class="activity-list"><div class="activity-item"><div class="activity-symbol green-bg">✓</div><div><strong>Chấm công hoàn tất</strong><p>Nguyễn Văn An · 07:55</p></div></div><div class="activity-item"><div class="activity-symbol blue-bg">＋</div><div><strong>Nhân viên mới</strong><p>Trần Thị Bình · Hôm qua</p></div></div><div class="activity-item"><div class="activity-symbol orange-bg">◷</div><div><strong>Ghi nhận đi muộn</strong><p>Lê Minh Cường · 08:10</p></div></div></div><button class="view-all" data-page="reports">Xem tất cả hoạt động <span>→</span></button></article>
+          </aside>
+        </section>
+
+        <section class="quick-links"><button class="quick-link" data-page="employees"><span class="quick-icon blue-bg">♙</span><span><strong>Quản lý nhân viên</strong><small>Danh sách và thông tin nhân sự</small></span><span class="quick-arrow">↗</span></button><button class="quick-link" data-page="reports"><span class="quick-icon purple-bg">▥</span><span><strong>Báo cáo chấm công</strong><small>Xem thống kê theo thời gian</small></span><span class="quick-arrow">↗</span></button><button class="quick-link" data-page="settings"><span class="quick-icon orange-bg">⚙</span><span><strong>Thiết lập hệ thống</strong><small>Tùy chỉnh theo nhu cầu</small></span><span class="quick-arrow">↗</span></button></section>
+        <footer><span>© 2026 Chấm Công Workspace</span><span><i class="footer-dot"></i> Phiên bản giao diện 1.0 <span class="footer-sep">·</span> Chưa kết nối cơ sở dữ liệu</span></footer>
+      </div>
+    </main>
+  </div>
+
+  <div class="overlay hidden" id="modalOverlay" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <form class="modal" id="attendanceForm">
+      <div class="modal-header"><div><span class="modal-kicker">QUẢN LÝ DỮ LIỆU</span><h2 id="modalTitle">Thêm chấm công</h2></div><button type="button" class="icon-button" id="closeModal" aria-label="Đóng">×</button></div>
+      <div class="form-grid"><label class="form-field full">Tên nhân viên<input required name="name" placeholder="Ví dụ: Nguyễn Văn An"></label><label class="form-field">Mã nhân viên<input required name="code" placeholder="NV009"></label><label class="form-field">Phòng ban<input name="department" placeholder="Ví dụ: Kế toán"></label><label class="form-field">Giờ vào<input name="checkIn" type="time" value="08:00"></label><label class="form-field">Giờ ra<input name="checkOut" type="time" value="17:00"></label><label class="form-field full">Trạng thái<select name="status"><option>Có mặt</option><option>Đi muộn</option><option>Vắng mặt</option></select></label></div>
+      <div class="modal-note"><span>ⓘ</span> Đây là bản giao diện thử nghiệm. Dữ liệu chỉ nằm trong phiên làm việc hiện tại và chưa đồng bộ giữa các thiết bị.</div>
+      <div class="modal-actions"><button type="button" class="outline-button" id="cancelModal">Hủy</button><button type="submit" class="primary-button">Lưu bản xem trước <span>→</span></button></div>
+    </form>
+  </div>
+  <div class="toast hidden" id="toast"><span>✓</span><div><strong id="toastTitle">Đã cập nhật</strong><small id="toastMessage">Thao tác thành công.</small></div></div>
+  <script src="app.js"></script>
+</body>
+</html>
