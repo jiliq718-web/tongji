@@ -1,6 +1,6 @@
 // 1) Điền thông tin Supabase tại đây (Project Settings > API).
-const SUPABASE_URL = "PASTE_SUPABASE_PROJECT_URL_HERE";
-const SUPABASE_ANON_KEY = "PASTE_SUPABASE_ANON_KEY_HERE";
+const SUPABASE_URL = "https://zuzyekphhcwwidcbvnqq.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "sb_publishable_OxHoqPnBjsvYos7WUm2kpg_hk8GEzyd";
 
 // Tên cột nội bộ và các tiêu đề Excel thường gặp (Việt/Trung).
 const COLS = [
