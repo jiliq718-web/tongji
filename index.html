@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Thống kê đại lý</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Thống kê đại lý</h1>
+      <p>Quản lý số liệu • Nhập Excel • Lưu dữ liệu trực tuyến</p>
+    </div>
+    <div class="auth-actions">
+      <span id="accountStatus">Chưa đăng nhập</span>
+      <button id="logoutBtn" class="secondary hidden">Đăng xuất</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section id="setupNotice" class="notice">
+      <strong>Cần cấu hình Supabase</strong>
+      <p>Mở <code>app.js</code>, điền <code>SUPABASE_URL</code> và <code>SUPABASE_ANON_KEY</code>. Sau đó chạy file <code>supabase.sql</code> trong Supabase SQL Editor.</p>
+    </section>
+
+    <section id="loginPanel" class="panel login-panel">
+      <div>
+        <h2>Đăng nhập</h2>
+        <p class="muted">Dữ liệu thống kê chỉ hiển thị sau khi đăng nhập.</p>
+      </div>
+      <form id="loginForm" class="login-form">
+        <label>Email
+          <input id="email" type="email" autocomplete="username" required placeholder="email@example.com">
+        </label>
+        <label>Mật khẩu
+          <input id="password" type="password" autocomplete="current-password" required placeholder="Mật khẩu Supabase">
+        </label>
+        <div class="button-row">
+          <button type="submit">Đăng nhập</button>
+          <button id="signupBtn" type="button" class="secondary">Tạo tài khoản</button>
+        </div>
+        <p id="loginMessage" class="message" aria-live="polite"></p>
+      </form>
+    </section>
+
+    <div id="appPanel" class="hidden">
+      <section class="kpis">
+        <article class="kpi"><span>Số đại lý</span><strong id="kpiAgents">0</strong></article>
+        <article class="kpi"><span>Số dòng dữ liệu</span><strong id="kpiRows">0</strong></article>
+        <article class="kpi"><span>Tổng chi phí</span><strong id="kpiExpense">0</strong></article>
+        <article class="kpi"><span>Tổng lãi/lỗ</span><strong id="kpiProfit">0</strong></article>
+      </section>
+
+      <section class="panel">
+        <div class="section-heading">
+          <div><h2>Dữ liệu thống kê</h2><p class="muted">Nhập file Excel để thêm hoặc cập nhật dữ liệu.</p></div>
+          <div class="button-row">
+            <label class="file-button">Chọn file Excel
+              <input id="excelFile" type="file" accept=".xlsx,.xls,.csv">
+            </label>
+            <button id="exportBtn" class="secondary">Xuất Excel</button>
+            <button id="refreshBtn" class="secondary">Tải lại</button>
+          </div>
+        </div>
+
+        <div class="filters">
+          <label>Mã đại lý
+            <input id="agentFilter" type="search" placeholder="Nhập mã đại lý...">
+          </label>
+          <label>Từ ngày
+            <input id="dateFrom" type="date">
+          </label>
+          <label>Đến ngày
+            <input id="dateTo" type="date">
+          </label>
+          <button id="clearFiltersBtn" class="secondary">Xóa bộ lọc</button>
+        </div>
+        <p id="dataMessage" class="message" aria-live="polite"></p>
+        <div class="table-wrap">
+          <table id="statsTable">
+            <thead><tr>
+              <th>Mã đại lý</th><th>Ngày</th><th>Lương ngày</th><th>Quỹ quảng cáo</th><th>Hoa hồng</th>
+              <th>Video</th><th>Tổng chi phí</th><th>Cấp 1 gửi</th><th>Cấp 1 rút</th><th>Cấp 2 gửi</th>
+              <th>Tổng tài sản</th><th>Tổng rút</th><th>Lãi trong nhà</th><th>Lãi ngoài nhà</th><th>Chênh lệch lưu trữ</th>
+              <th>Tổng lãi</th><th>LN %</th><th>Phí thủ tục</th><th>Quảng cáo mới</th><th>Trạng thái hợp tác</th>
+            </tr></thead>
+            <tbody id="statsBody"><tr><td colspan="20" class="empty">Đăng nhập để tải dữ liệu.</td></tr></tbody>
+            <tfoot id="statsFoot"></tfoot>
+          </table>
+        </div>
+        <p class="footnote">Lưu ý: file Excel nên có hàng tiêu đề gồm các cột tương ứng với bảng. Dòng “总计” được bỏ qua khi nhập và tổng được tính lại trên website.</p>
+      </section>
+    </div>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>
