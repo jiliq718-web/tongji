@@ -306,13 +306,36 @@
             </p>
           </div>
 
-          <button
-            id="refreshHierarchyBtn"
-            class="secondary"
-            type="button"
-          >
-            Tải lại danh sách
-          </button>
+
+          <div class="button-row hierarchy-tools">
+          
+            <button
+              id="downloadHierarchyTemplateBtn"
+              class="secondary"
+              type="button"
+            >
+              Tải mẫu Excel
+            </button>
+          
+            <label class="file-button">
+              Tải Excel liên kết
+              <input
+                id="hierarchyExcelFile"
+                type="file"
+                accept=".xlsx,.xls,.csv"
+              >
+            </label>
+          
+            <button
+              id="refreshHierarchyBtn"
+              class="secondary"
+              type="button"
+            >
+              Tải lại danh sách
+            </button>
+          
+          </div>
+
 
         </div>
 
