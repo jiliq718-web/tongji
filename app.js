@@ -10,7 +10,7 @@ const FETCH_SIZE = 500;
 const PAGE_SIZE = 200;
 
 const COLS = [
-  ["agent_id", ["代理ID", "Mã đại lý", "代理id", "代理编号"]],
+  ["agent_id", ["代理ID", "代理ID", "代理id", "代理编号"]],
   ["report_date", ["日期", "Ngày", "日期日期"]],
   ["daily_salary", ["日薪", "Lương ngày"]],
   ["ad_funds", ["广告资金", "Quỹ quảng cáo", "Quảng cáo"]],
@@ -276,7 +276,7 @@ function parseWorkbook(arrayBuffer) {
   }
 
   if (!records.length) {
-    throw new Error("Không tìm thấy dữ liệu hợp lệ. Kiểm tra tiêu đề mã đại lý và ngày trong Excel.");
+    throw new Error("未找到有效数据，请检查Excel中的代理ID和日期标题。");
   }
 
   const unique = new Map();
@@ -286,7 +286,7 @@ function parseWorkbook(arrayBuffer) {
   }
 
   if (skipped.length) {
-    console.info("Đã bỏ qua sheet phụ:", skipped);
+    console.info("已跳过辅助工作表：", skipped);
   }
 
   return [...unique.values()];
@@ -297,27 +297,27 @@ function parseWorkbook(arrayBuffer) {
 // ======================================================
 
 async function importExcel(file) {
-  if (!db) throw new Error("Chưa cấu hình Supabase.");
-  if (importingExcel) throw new Error("Đang nhập một file khác. Vui lòng chờ.");
+  if (!db) throw new Error("尚未配置Supabase。");
+  if (importingExcel) throw new Error("另一个文件正在导入，请稍候。");
 
   // Đọc và kiểm tra trước khi xóa dữ liệu cũ.
   const records = parseWorkbook(await file.arrayBuffer());
 
   if (!records.length) {
-    throw new Error("File Excel không có dữ liệu hợp lệ.");
+    throw new Error("Excel文件中没有有效数据。");
   }
 
   const confirmed = confirm(
-    `CẢNH BÁO: THAY THẾ TOÀN BỘ DỮ LIỆU CŨ\n\n` +
+    `警告：将替换全部旧数据\n\n` +
     `File mới: ${file.name}\n` +
-    `Số dòng chuẩn bị nhập: ${records.length.toLocaleString("vi-VN")}\n\n` +
-    `Dữ liệu cũ trong agent_stats sẽ bị thay thế.\n` +
-    `Quan hệ cấp trên trong agent_hierarchy vẫn được giữ nguyên.\n\n` +
-    `Bạn có chắc chắn muốn tiếp tục không?`
+    `准备导入的记录数： ${records.length.toLocaleString("vi-VN")}\n\n` +
+    `agent_stats中的旧数据将被替换。\n` +
+    `agent_hierarchy中的上下级关系将保留。\n\n` +
+    `确定要继续吗？`
   );
 
   if (!confirmed) {
-    msg("dataMessage", "Đã hủy nhập. Dữ liệu cũ vẫn được giữ nguyên.");
+    msg("dataMessage", "已取消导入，旧数据保持不变。");
     return;
   }
 
@@ -327,7 +327,7 @@ async function importExcel(file) {
   if (fileInput) fileInput.disabled = true;
 
   try {
-    msg("dataMessage", `Đang nhập ${records.length.toLocaleString("vi-VN")} dòng...`);
+    msg("dataMessage", `正在导入 ${records.length.toLocaleString("vi-VN")} 条记录...`);
 
     // RPC xóa dữ liệu cũ và nhập dữ liệu mới trong cùng giao dịch.
     const { data, error } = await db.rpc("replace_agent_stats", {
@@ -343,13 +343,13 @@ async function importExcel(file) {
 
     msg(
       "dataMessage",
-      `Thay thế thành công! Đã nhập ${Number(data).toLocaleString("vi-VN")} dòng từ ${file.name}.`
+      `替换成功！已导入 ${Number(data).toLocaleString("vi-VN")} 条记录，文件： ${file.name}.`
     );
 
   } catch (error) {
     msg(
       "dataMessage",
-      `Nhập thất bại: ${error.message || error}. Nếu RPC lỗi, dữ liệu cũ được giữ nguyên.`,
+      `导入失败： ${error.message || error}. 如果RPC出错，旧数据将保持不变。`,
       true
     );
 
@@ -380,18 +380,18 @@ function setupBulkHierarchyUI() {
     area.innerHTML = `
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <button id="downloadHierarchyTemplateBtn" type="button" class="secondary">
-          Tải mẫu Excel liên kết
+          下载代理关系Excel模板
         </button>
 
         <label class="file-button">
-          Tải lên liên kết hàng loạt
+          批量上传代理关系
           <input id="hierarchyExcelFile" type="file" accept=".xlsx,.xls,.csv">
         </label>
       </div>
 
       <p style="margin-top:10px">
-        Tải mẫu Excel, điền mã đại lý và mã cấp trên trực tiếp vào từng dòng,
-        sau đó tải file lên để liên kết nhiều đại lý cùng lúc.
+        下载Excel模板，在每一行填写代理ID和直属上级ID，
+        然后上传文件即可批量建立代理关系。
       </p>
       <p id="bulkHierarchyMessage" class="message" aria-live="polite"></p>
     `;
@@ -417,7 +417,7 @@ function setupBulkHierarchyUI() {
     try {
       await importHierarchyExcel(file);
     } catch (error) {
-      msg("bulkHierarchyMessage", `Nhập thất bại: ${error.message}`, true);
+      msg("bulkHierarchyMessage", `导入失败： ${error.message}`, true);
     } finally {
       event.target.value = "";
     }
@@ -439,11 +439,11 @@ function downloadHierarchyTemplate() {
   const ws = XLSX.utils.aoa_to_sheet(rows);
   const wb = XLSX.utils.book_new();
 
-  XLSX.utils.book_append_sheet(wb, ws, "QuanHeCapTren");
+  XLSX.utils.book_append_sheet(wb, ws, "上级关系");
 
-  XLSX.writeFile(wb, "mau-lien-ket-cap-tren.xlsx");
+  XLSX.writeFile(wb, "代理上级关系模板.xlsx");
 
-  msg("bulkHierarchyMessage", "Đã tải mẫu Excel. Hãy thay các mã ví dụ bằng mã của bạn.");
+  msg("bulkHierarchyMessage", "Excel模板已下载，请将示例ID替换为您自己的ID。");
 }
 
 // ======================================================
@@ -473,7 +473,7 @@ function parseHierarchyWorkbook(arrayBuffer) {
     );
 
     parentIndex = headers.findIndex(v =>
-      ["parent_agent_id", "mãcấptrêntrựctiếp", "mãcấptrên", "上级代理id"].includes(v)
+      ["parent_agent_id", "mãcấp共trựctiếp", "mãcấp共", "上级代理id"].includes(v)
     );
 
     if (childIndex >= 0 && parentIndex >= 0) {
@@ -483,7 +483,7 @@ function parseHierarchyWorkbook(arrayBuffer) {
   }
 
   if (headerRow < 0) {
-    throw new Error("Không tìm thấy hai cột agent_id và parent_agent_id trong file mẫu.");
+    throw new Error("模板中未找到agent_id和parent_agent_id两列。");
   }
 
   const result = [];
@@ -496,15 +496,15 @@ function parseHierarchyWorkbook(arrayBuffer) {
     if (!child && !parent) continue;
 
     if (!child || !parent) {
-      throw new Error(`Dòng ${i + 1}: Thiếu mã đại lý hoặc mã cấp trên.`);
+      throw new Error(`Dòng ${i + 1}: 缺少代理ID或上级ID。`);
     }
 
     if (child === parent) {
-      throw new Error(`Dòng ${i + 1}: Đại lý không thể là cấp trên của chính nó.`);
+      throw new Error(`Dòng ${i + 1}: 代理不能将自己设为上级。`);
     }
 
     if (seen.has(child)) {
-      throw new Error(`Mã đại lý ${child} bị trùng trong file.`);
+      throw new Error(`代理ID ${child} 在文件中重复。`);
     }
 
     seen.add(child);
@@ -515,7 +515,7 @@ function parseHierarchyWorkbook(arrayBuffer) {
   }
 
   if (!result.length) {
-    throw new Error("File không có dòng liên kết hợp lệ.");
+    throw new Error("文件中没有有效的代理关系记录。");
   }
 
   return result;
@@ -527,9 +527,9 @@ async function importHierarchyExcel(file) {
   const records = parseHierarchyWorkbook(await file.arrayBuffer());
 
   const confirmed = confirm(
-    `Bạn chuẩn bị liên kết ${records.length.toLocaleString("vi-VN")} đại lý.\n\n` +
-    `Nếu mã đại lý đã có cấp trên, quan hệ cũ sẽ được cập nhật bằng quan hệ mới.\n\n` +
-    `Bạn có muốn tiếp tục không?`
+    `即将建立 ${records.length.toLocaleString("vi-VN")} 个代理。\n\n` +
+    `如果代理已有上级，将用新关系更新原关系。\n\n` +
+    `是否继续？`
   );
 
   if (!confirmed) return;
@@ -540,7 +540,7 @@ async function importHierarchyExcel(file) {
   try {
     msg(
       "bulkHierarchyMessage",
-      `Đang kiểm tra và nhập ${records.length.toLocaleString("vi-VN")} liên kết...`
+      `正在检查并导入 ${records.length.toLocaleString("vi-VN")} 条关系...`
     );
 
     // Kiểm tra vòng lặp trước khi ghi.
@@ -556,7 +556,7 @@ async function importHierarchyExcel(file) {
 
       while (cursor) {
         if (seen.has(cursor)) {
-          throw new Error(`Liên kết của ${item.agent_id} tạo vòng lặp. Hãy kiểm tra file.`);
+          throw new Error(`关联 của ${item.agent_id} 会形成循环关系，请检查文件。`);
         }
 
         seen.add(cursor);
@@ -578,7 +578,7 @@ async function importHierarchyExcel(file) {
 
       msg(
         "bulkHierarchyMessage",
-        `Đã lưu ${Math.min(i + batch.length, records.length).toLocaleString("vi-VN")} / ${records.length.toLocaleString("vi-VN")} liên kết...`
+        `已保存 ${Math.min(i + batch.length, records.length).toLocaleString("vi-VN")} / ${records.length.toLocaleString("vi-VN")} 条关系...`
       );
     }
 
@@ -586,7 +586,7 @@ async function importHierarchyExcel(file) {
 
     msg(
       "bulkHierarchyMessage",
-      `Hoàn tất! Đã liên kết ${records.length.toLocaleString("vi-VN")} đại lý.`
+      `完成！已建立关系 ${records.length.toLocaleString("vi-VN")} 个代理。`
     );
 
   } finally {
@@ -659,7 +659,7 @@ async function loadHierarchy() {
     render();
 
   } catch (error) {
-    msg("hierarchyMessage", `Không tải được quan hệ cấp trên: ${error.message}`, true);
+    msg("hierarchyMessage", `无法加载上级关系： ${error.message}`, true);
   }
 }
 
@@ -678,8 +678,8 @@ function setupLinkedPanel() {
   panel.innerHTML = `
     <div class="section-heading compact-heading">
       <div>
-        <h2>2. Danh sách đại lý đã liên kết</h2>
-        <p class="muted">Các đại lý đã có cấp trên trực tiếp. Có thể cập nhật hoặc xóa liên kết.</p>
+        <h2>2. 已关联代理列表</h2>
+        <p class="muted">以下代理已有直属上级，您可以更新或删除关系。</p>
       </div>
       <strong id="linkedCount" class="count-pill">0 mã</strong>
     </div>
@@ -688,14 +688,14 @@ function setupLinkedPanel() {
       <table class="hierarchy-table">
         <thead>
           <tr>
-            <th>Mã đại lý</th>
-            <th>Số dòng thống kê</th>
-            <th>Mã cấp trên trực tiếp</th>
-            <th>Thao tác</th>
+            <th>代理ID</th>
+            <th>统计记录数</th>
+            <th>直属上级ID</th>
+            <th>操作</th>
           </tr>
         </thead>
         <tbody id="linkedBody">
-          <tr><td colspan="4" class="empty">Đang tải...</td></tr>
+          <tr><td colspan="4" class="empty">正在加载...</td></tr>
         </tbody>
       </table>
     </div>
@@ -773,7 +773,7 @@ function renderAgentLinks() {
 
     input.type = "text";
     input.className = "inline-parent-input";
-    input.placeholder = "Nhập mã cấp trên";
+    input.placeholder = "输入上级代理ID";
     input.value = isLinked ? parents.get(id) : "";
 
     parentCell.appendChild(input);
@@ -783,7 +783,7 @@ function renderAgentLinks() {
 
     const saveButton = document.createElement("button");
     saveButton.className = "small-button";
-    saveButton.textContent = isLinked ? "Cập nhật" : "Liên kết";
+    saveButton.textContent = isLinked ? "更新" : "关联";
 
     saveButton.addEventListener("click", () => {
       saveParentFor(id, input.value);
@@ -794,7 +794,7 @@ function renderAgentLinks() {
     if (isLinked) {
       const deleteButton = document.createElement("button");
       deleteButton.className = "danger small-button";
-      deleteButton.textContent = "Xóa liên kết";
+      deleteButton.textContent = "删除关系";
 
       deleteButton.addEventListener("click", () => {
         deleteParent(id);
@@ -811,10 +811,10 @@ function renderAgentLinks() {
 
   if (!all.length) {
     unlinkedBody.innerHTML =
-      '<tr><td colspan="4" class="empty">Chưa có dữ liệu thống kê. Hãy nhập Excel trước.</td></tr>';
+      '<tr><td colspan="4" class="empty">暂无统计数据，请先导入Excel。</td></tr>';
   } else if (!unlinked.length) {
     unlinkedBody.innerHTML =
-      '<tr><td colspan="4" class="empty">Không còn đại lý nào chưa liên kết.</td></tr>';
+      '<tr><td colspan="4" class="empty">没有尚未关联的代理。</td></tr>';
   } else {
     for (const [id, count] of unlinked) {
       unlinkedBody.appendChild(createAgentRow(id, count, false));
@@ -825,10 +825,10 @@ function renderAgentLinks() {
 
   if (!all.length) {
     linkedBody.innerHTML =
-      '<tr><td colspan="4" class="empty">Chưa có dữ liệu thống kê.</td></tr>';
+      '<tr><td colspan="4" class="empty">暂无统计数据。</td></tr>';
   } else if (!linked.length) {
     linkedBody.innerHTML =
-      '<tr><td colspan="4" class="empty">Chưa có đại lý nào được liên kết.</td></tr>';
+      '<tr><td colspan="4" class="empty">暂无已关联的代理。</td></tr>';
   } else {
     for (const [id, count] of linked) {
       linkedBody.appendChild(createAgentRow(id, count, true));
@@ -845,12 +845,12 @@ async function saveParentFor(child, parent) {
   parent = cleanId(parent);
 
   if (!child || !parent) {
-    msg("hierarchyMessage", "Hãy nhập đầy đủ mã đại lý và mã cấp trên.", true);
+    msg("hierarchyMessage", "请填写代理ID和上级ID。", true);
     return;
   }
 
   if (child === parent) {
-    msg("hierarchyMessage", "Một đại lý không thể là cấp trên của chính nó.", true);
+    msg("hierarchyMessage", "代理不能将自己设为上级。", true);
     return;
   }
 
@@ -860,7 +860,7 @@ async function saveParentFor(child, parent) {
 
   while (cursor) {
     if (seen.has(cursor)) {
-      msg("hierarchyMessage", "Liên kết này tạo vòng lặp cấp trên. Hãy kiểm tra lại.", true);
+      msg("hierarchyMessage", "关联 này tạo vòng lặp cấp 共. Hãy kiểm tra lại.", true);
       return;
     }
 
@@ -879,11 +879,11 @@ async function saveParentFor(child, parent) {
     });
 
   if (error) {
-    msg("hierarchyMessage", `Không lưu được liên kết: ${error.message}`, true);
+    msg("hierarchyMessage", `无法保存代理关系： ${error.message}`, true);
     return;
   }
 
-  msg("hierarchyMessage", `Đã liên kết đại lý ${child} trực thuộc ${parent}.`);
+  msg("hierarchyMessage", `已关联代理 ${child} 隶属于 ${parent}.`);
 
   await loadHierarchy();
 }
@@ -893,7 +893,7 @@ async function saveParentFor(child, parent) {
 // ======================================================
 
 async function deleteParent(child) {
-  if (!confirm(`Bỏ quan hệ cấp trên của đại lý ${child}?`)) return;
+  if (!confirm(`确定删除该代理的上级关系： ${child}?`)) return;
 
   const { error } = await db
     .from("agent_hierarchy")
@@ -901,11 +901,11 @@ async function deleteParent(child) {
     .eq("agent_id", child);
 
   if (error) {
-    msg("hierarchyMessage", `Không xóa được quan hệ: ${error.message}`, true);
+    msg("hierarchyMessage", `无法删除关系： ${error.message}`, true);
     return;
   }
 
-  msg("hierarchyMessage", `Đã bỏ quan hệ cấp trên của ${child}.`);
+  msg("hierarchyMessage", `已删除该代理的上级关系： ${child}.`);
 
   await loadHierarchy();
 }
@@ -918,7 +918,7 @@ async function loadData() {
   if (!db || loadingData) return;
 
   loadingData = true;
-  msg("dataMessage", "Đang tải dữ liệu...");
+  msg("dataMessage", "正在加载数据...");
 
   try {
     let allRows = [];
@@ -936,7 +936,7 @@ async function loadData() {
 
       msg(
         "dataMessage",
-        `Đang tải dữ liệu: ${allRows.length.toLocaleString("vi-VN")} dòng`
+        `正在加载数据： ${allRows.length.toLocaleString("vi-VN")} 条`
       );
 
       if (!data || data.length < FETCH_SIZE) break;
@@ -951,11 +951,11 @@ async function loadData() {
 
     msg(
       "dataMessage",
-      `Đã tải thành công ${currentRows.length.toLocaleString("vi-VN")} dòng dữ liệu.`
+      `Đã tải thành công ${currentRows.length.toLocaleString("vi-VN")} 条数据。`
     );
 
   } catch (error) {
-    msg("dataMessage", `Tải dữ liệu thất bại: ${error.message || error}`, true);
+    msg("dataMessage", `数据加载失败： ${error.message || error}`, true);
     throw error;
 
   } finally {
@@ -1002,7 +1002,7 @@ function filteredRows() {
 }
 
 
-// Kiểu màu cho dòng tổng từng đại lý và tổng chung.
+// Kiểu màu cho 条 tổng từng 个代理 và tổng chung.
 (function addTotalRowStyles() {
   if (document.getElementById("agentTotalRowStyles")) return;
   const style = document.createElement("style");
@@ -1080,7 +1080,7 @@ function render() {
 
   if (!visibleRows.length) {
     body.innerHTML =
-      '<tr><td colspan="20" class="empty">Không có dữ liệu phù hợp bộ lọc.</td></tr>';
+      '<tr><td colspan="20" class="empty">没有符合筛选条件的数据。</td></tr>';
     updateStatsPagination(0, totalPages);
     return;
   }
@@ -1105,7 +1105,7 @@ function render() {
     "handling_fee"
   ]);
 
-  // Gom theo mã đại lý, giữ thứ tự mã đại lý và ngày.
+  // Gom theo mã 个代理, giữ thứ tự mã 个代理 và ngày.
   const groups = new Map();
 
   for (const row of visibleRows) {
@@ -1114,9 +1114,13 @@ function render() {
     groups.get(id).push(row);
   }
 
-  const sortedGroups = [...groups.entries()].sort((a, b) =>
-    a[0].localeCompare(b[0], undefined, { numeric: true })
-  );
+  // 按每个代理的“总费用”从高到低排序；费用相同时按代理ID排序。
+  const sortedGroups = [...groups.entries()].sort((a, b) => {
+    const expenseA = sum(a[1], "total_expense");
+    const expenseB = sum(b[1], "total_expense");
+    return expenseB - expenseA ||
+      a[0].localeCompare(b[0], undefined, { numeric: true });
+  });
 
   const pageStart = (statsPage - 1) * PAGE_SIZE;
   const pageGroups = sortedGroups.slice(pageStart, pageStart + PAGE_SIZE);
@@ -1160,9 +1164,9 @@ function render() {
       const td = document.createElement("td");
 
       if (i === 0) {
-        td.textContent = "TỔNG";
+        td.textContent = "小计";
       } else if (field === "report_date") {
-        td.textContent = `${agentRows.length} dòng`;
+        td.textContent = `${agentRows.length} 条`;
       } else if (totalFields.has(field)) {
         const number = sum(agentRows, field);
         td.textContent = fmt(number);
@@ -1185,7 +1189,7 @@ function render() {
   }
 
   for (const [agentId, agentRows] of pageGroups) {
-    // Chỉ hiện ngày có dữ liệu; không tạo các dòng ngày rỗng có dấu gạch ngang.
+    // Chỉ hiện ngày có dữ liệu; không tạo các 条 ngày rỗng có dấu gạch ngang.
     agentRows.sort((a, b) =>
       String(a.report_date || "").localeCompare(String(b.report_date || ""))
     );
@@ -1197,8 +1201,8 @@ function render() {
     appendSubtotal(agentId, agentRows);
   }
 
-  // Dòng TỔNG CHUNG theo quy tắc:
-  // 1) 8 cột hoạt động: cộng tất cả đại lý trong kết quả lọc.
+  // Dòng 小计 CHUNG theo quy tắc:
+  // 1) 8 cột hoạt động: cộng tất cả 个代理 trong kết quả lọc.
   // 2) Tổng tài sản, Tổng rút, Phí thủ tục: ưu tiên ID tìm kiếm;
   //    nếu ID đó không có số liệu thì lấy cấp dưới trực tiếp;
   //    nếu cấp 1 cũng không có thì lấy cấp 2.
@@ -1279,9 +1283,9 @@ function render() {
     const td = document.createElement("td");
 
     if (i === 0) {
-      td.textContent = "TỔNG CHUNG";
+      td.textContent = "小计 CHUNG";
     } else if (field === "report_date") {
-      td.textContent = `${visibleRows.length} dòng`;
+      td.textContent = `${visibleRows.length} 条`;
     } else if (additiveGrandFields.has(field)) {
       const number = sum(visibleRows, field);
       td.textContent = fmt(number);
@@ -1365,16 +1369,16 @@ function updateStatsPagination(totalRows, totalPages) {
 
   box.innerHTML = `
     <button id="statsPrev" class="secondary" type="button"
-      ${statsPage <= 1 ? "disabled" : ""}>Trang trước</button>
+      ${statsPage <= 1 ? "disabled" : ""}>上一页</button>
 
     <span>
-      Trang ${statsPage} / ${totalPages}
-      · Hiển thị đại lý ${start}-${end}
-      trên ${totalRows.toLocaleString("vi-VN")} đại lý
+      页 ${statsPage} / ${totalPages}
+      · 显示代理 ${start}-${end}
+      共 ${totalRows.toLocaleString("vi-VN")} 个代理
     </span>
 
     <button id="statsNext" class="secondary" type="button"
-      ${statsPage >= totalPages ? "disabled" : ""}>Trang sau</button>
+      ${statsPage >= totalPages ? "disabled" : ""}>下一页</button>
   `;
 
   $("statsPrev").addEventListener("click", () => {
@@ -1414,14 +1418,14 @@ function setSignedIn(yes) {
   $("logoutBtn")?.classList.toggle("hidden", !yes);
 
   if ($("accountStatus")) {
-    $("accountStatus").textContent = yes ? "Đã đăng nhập" : "Chưa đăng nhập";
+    $("accountStatus").textContent = yes ? "已登录" : "未登录";
   }
 }
 
 async function init() {
   if (!configured()) {
     $("setupNotice")?.classList.remove("hidden");
-    msg("loginMessage", "Hãy điền thông tin Supabase trong app.js trước khi sử dụng.");
+    msg("loginMessage", "使用前请先在app.js中填写Supabase配置。");
     return;
   }
 
@@ -1465,7 +1469,7 @@ $("loginForm")?.addEventListener("submit", async event => {
 
   if (!db) return;
 
-  msg("loginMessage", "Đang đăng nhập...");
+  msg("loginMessage", "正在登录...");
 
   const { error } = await db.auth.signInWithPassword({
     email: $("email").value.trim(),
@@ -1474,7 +1478,7 @@ $("loginForm")?.addEventListener("submit", async event => {
 
   msg(
     "loginMessage",
-    error ? error.message : "Đăng nhập thành công.",
+    error ? error.message : "登录成功。",
     !!error
   );
 
@@ -1494,7 +1498,7 @@ $("loginForm")?.addEventListener("submit", async event => {
 $("signupBtn")?.addEventListener("click", async () => {
   if (!db) return;
 
-  msg("loginMessage", "Đang tạo tài khoản...");
+  msg("loginMessage", "正在创建账户...");
 
   const { data, error } = await db.auth.signUp({
     email: $("email").value.trim(),
@@ -1507,8 +1511,8 @@ $("signupBtn")?.addEventListener("click", async () => {
       ? error.message
       : (
         data.session
-          ? "Tạo tài khoản thành công."
-          : "Đã gửi email xác nhận nếu dự án yêu cầu xác minh."
+          ? "账户创建成功。"
+          : "如果项目要求验证，确认邮件已发送。"
       ),
     !!error
   );
@@ -1535,10 +1539,10 @@ $("excelFile")?.addEventListener("change", async event => {
   if (!file) return;
 
   try {
-    msg("dataMessage", "Đang đọc file Excel...");
+    msg("dataMessage", "正在读取Excel文件...");
     await importExcel(file);
   } catch (error) {
-    msg("dataMessage", `Nhập Excel thất bại: ${error.message || error}`, true);
+    msg("dataMessage", `Excel导入失败： ${error.message || error}`, true);
   } finally {
     event.target.value = "";
   }
@@ -1595,7 +1599,7 @@ $("exportBtn")?.addEventListener("click", () => {
   const rows = filteredRows();
 
   if (!rows.length) {
-    msg("dataMessage", "Không có dữ liệu để xuất.", true);
+    msg("dataMessage", "没有可导出的数据。", true);
     return;
   }
 
@@ -1616,7 +1620,7 @@ $("exportBtn")?.addEventListener("click", () => {
 
   XLSX.utils.book_append_sheet(wb, ws, "ThongKe");
 
-  XLSX.writeFile(wb, "thong-ke-dai-ly.xlsx");
+  XLSX.writeFile(wb, "代理统计.xlsx");
 });
 
 // ======================================================
