@@ -1216,6 +1216,24 @@ function render() {
 
   const firstAgentRows = sortedGroups.length ? sortedGroups[0][1] : [];
 
+  // Khi tìm một mã đại lý chính xác, chỉ lấy các đại lý liên kết trực tiếp
+  // bên dưới mã đó để cộng các cột tổng hợp; không cộng cấp dưới của cấp dưới.
+  const searchedAgentId = cleanId($("agentFilter")?.value);
+  const hasExactSearchedAgent = searchedAgentId &&
+    currentRows.some(row => cleanId(row.agent_id) === searchedAgentId);
+
+  const directChildIds = hasExactSearchedAgent
+    ? new Set(
+        hierarchyRows
+          .filter(link => cleanId(link.parent_agent_id) === searchedAgentId)
+          .map(link => cleanId(link.agent_id))
+      )
+    : null;
+
+  const directChildRows = directChildIds
+    ? visibleRows.filter(row => directChildIds.has(cleanId(row.agent_id)))
+    : visibleRows;
+
   for (const [i, field] of displayFields.entries()) {
     const td = document.createElement("td");
 
@@ -1224,7 +1242,7 @@ function render() {
     } else if (field === "report_date") {
       td.textContent = `${visibleRows.length} dòng`;
     } else if (additiveGrandFields.has(field)) {
-      const number = sum(visibleRows, field);
+      const number = sum(directChildRows, field);
       td.textContent = fmt(number);
       if (number < 0) td.classList.add("negative");
     } else if (field === "total_profit") {
