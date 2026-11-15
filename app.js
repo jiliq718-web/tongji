@@ -1197,9 +1197,24 @@ function render() {
     appendSubtotal(agentId, agentRows);
   }
 
-  // Dòng tổng chung toàn bộ dữ liệu đang lọc, đặt ở cuối bảng.
+  // Dòng TỔNG CHUNG:
+  // Cộng các cột lương, quảng cáo, hoa hồng, video, chi phí và số lượng gửi/rút.
+  // Các cột còn lại lấy theo tổng của đại lý đứng đầu danh sách.
   const grandTotal = document.createElement("tr");
   grandTotal.className = "grand-total-row";
+
+  const additiveGrandFields = new Set([
+    "daily_salary",
+    "ad_funds",
+    "commission",
+    "video_promotion",
+    "total_expense",
+    "level1_deposit",
+    "level1_withdrawal",
+    "level2_deposit"
+  ]);
+
+  const firstAgentRows = sortedGroups.length ? sortedGroups[0][1] : [];
 
   for (const [i, field] of displayFields.entries()) {
     const td = document.createElement("td");
@@ -1208,14 +1223,28 @@ function render() {
       td.textContent = "TỔNG CHUNG";
     } else if (field === "report_date") {
       td.textContent = `${visibleRows.length} dòng`;
-    } else if (totalFields.has(field)) {
+    } else if (additiveGrandFields.has(field)) {
       const number = sum(visibleRows, field);
+      td.textContent = fmt(number);
+      if (number < 0) td.classList.add("negative");
+    } else if (field === "total_profit") {
+      // Tổng lãi chung = Chênh lệch lưu trữ tổng chung - Tổng chi phí tổng chung.
+      // Chênh lệch lưu trữ đang lấy theo tổng của đại lý đứng đầu.
+      const grandStorageDiff = sum(firstAgentRows, "storage_diff");
+      const grandTotalExpense = sum(visibleRows, "total_expense");
+      const number = grandStorageDiff - grandTotalExpense;
+      td.textContent = fmt(number);
+      if (number < 0) td.classList.add("negative");
+    } else if (totalFields.has(field)) {
+      const number = sum(firstAgentRows, field);
       td.textContent = fmt(number);
       if (number < 0) td.classList.add("negative");
     } else if (field === "profit_percent") {
       const denominator = sum(visibleRows, "total_expense");
+      const grandStorageDiff = sum(firstAgentRows, "storage_diff");
+      const grandProfit = grandStorageDiff - denominator;
       td.textContent = denominator
-        ? fmt(sum(visibleRows, "total_profit") / denominator * 100) + "%"
+        ? fmt(grandProfit / denominator * 100) + "%"
         : "—";
     } else {
       td.textContent = "";
