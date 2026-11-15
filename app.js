@@ -1001,6 +1001,37 @@ function filteredRows() {
   });
 }
 
+
+// Kiểu màu cho dòng tổng từng đại lý và tổng chung.
+(function addTotalRowStyles() {
+  if (document.getElementById("agentTotalRowStyles")) return;
+  const style = document.createElement("style");
+  style.id = "agentTotalRowStyles";
+  style.textContent = `
+    .agent-total-row td,
+    .grand-total-row td {
+      background: #ffc000 !important;
+      color: #111827 !important;
+      font-weight: 700 !important;
+      border-top: 2px solid #b8860b !important;
+      border-bottom: 2px solid #b8860b !important;
+    }
+    .agent-total-row td.negative,
+    .grand-total-row td.negative {
+      color: #d00000 !important;
+    }
+    .grand-total-row td {
+      background: #f5b800 !important;
+      border-top: 3px solid #8a6500 !important;
+    }
+  `;
+  document.head.appendChild(style);
+})();
+
+function sortedGroupCount(rows) {
+  return new Set(rows.map(row => cleanId(row.agent_id)).filter(Boolean)).size;
+}
+
 // ======================================================
 // 15. HIỂN THỊ THỐNG KÊ
 // ======================================================
@@ -1018,33 +1049,79 @@ function render() {
 
   $("kpiRows").textContent = rows.length.toLocaleString("vi-VN");
 
-  const sum = field =>
-    rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
+  const sum = (items, field) =>
+    items.reduce((total, row) => total + (Number(row[field]) || 0), 0);
 
-  $("kpiExpense").textContent = fmt(sum("total_expense"));
-  $("kpiProfit").textContent = fmt(sum("total_profit"));
+  $("kpiExpense").textContent = fmt(sum(rows, "total_expense"));
+  $("kpiProfit").textContent = fmt(sum(rows, "total_profit"));
 
   body.innerHTML = "";
   foot.innerHTML = "";
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  // Bỏ các bản ghi hoàn toàn trống về mặt số liệu.
+  // Video có giá trị 0 vẫn được xem là dữ liệu hợp lệ nếu các cột khác có số.
+  const hasActualData = row =>
+    NUMERIC_FIELDS.some(field => {
+      const value = row[field];
+      return value !== null &&
+        value !== undefined &&
+        value !== "" &&
+        Number(value) !== 0;
+    }) ||
+    Boolean(String(row.new_ad_status || "").trim()) ||
+    Boolean(String(row.cooperation_status || "").trim());
+
+  const visibleRows = rows.filter(hasActualData);
+
+  const totalPages = Math.max(1, Math.ceil(sortedGroupCount(visibleRows) / PAGE_SIZE));
 
   if (statsPage > totalPages) statsPage = totalPages;
   if (statsPage < 1) statsPage = 1;
 
-  if (!rows.length) {
+  if (!visibleRows.length) {
     body.innerHTML =
       '<tr><td colspan="20" class="empty">Không có dữ liệu phù hợp bộ lọc.</td></tr>';
-
     updateStatsPagination(0, totalPages);
     return;
   }
 
-  const start = (statsPage - 1) * PAGE_SIZE;
-  const pageRows = rows.slice(start, start + PAGE_SIZE);
   const displayFields = COLS.map(c => c[0]);
 
-  for (const row of pageRows) {
+  const totalFields = new Set([
+    "daily_salary",
+    "ad_funds",
+    "commission",
+    "video_promotion",
+    "total_expense",
+    "level1_deposit",
+    "level1_withdrawal",
+    "level2_deposit",
+    "total_assets",
+    "total_withdrawals",
+    "internal_profit",
+    "external_profit",
+    "storage_diff",
+    "total_profit",
+    "handling_fee"
+  ]);
+
+  // Gom theo mã đại lý, giữ thứ tự mã đại lý và ngày.
+  const groups = new Map();
+
+  for (const row of visibleRows) {
+    const id = cleanId(row.agent_id);
+    if (!groups.has(id)) groups.set(id, []);
+    groups.get(id).push(row);
+  }
+
+  const sortedGroups = [...groups.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0], undefined, { numeric: true })
+  );
+
+  const pageStart = (statsPage - 1) * PAGE_SIZE;
+  const pageGroups = sortedGroups.slice(pageStart, pageStart + PAGE_SIZE);
+
+  function appendDataRow(row) {
     const tr = document.createElement("tr");
 
     for (const field of displayFields) {
@@ -1075,53 +1152,81 @@ function render() {
     body.appendChild(tr);
   }
 
-  const totalFields = new Set([
-    "daily_salary",
-    "ad_funds",
-    "commission",
-    "video_promotion",
-    "total_expense",
-    "level1_deposit",
-    "level1_withdrawal",
-    "level2_deposit",
-    "total_assets",
-    "total_withdrawals",
-    "internal_profit",
-    "external_profit",
-    "storage_diff",
-    "total_profit",
-    "handling_fee"
-  ]);
+  function appendSubtotal(agentId, agentRows) {
+    const tr = document.createElement("tr");
+    tr.className = "agent-total-row";
 
-  const totalRow = document.createElement("tr");
+    for (const [i, field] of displayFields.entries()) {
+      const td = document.createElement("td");
+
+      if (i === 0) {
+        td.textContent = "TỔNG";
+      } else if (field === "report_date") {
+        td.textContent = `${agentRows.length} dòng`;
+      } else if (totalFields.has(field)) {
+        const number = sum(agentRows, field);
+        td.textContent = fmt(number);
+        if (number < 0) td.classList.add("negative");
+      } else if (field === "profit_percent") {
+        const denominator = sum(agentRows, "total_expense");
+        td.textContent = denominator
+          ? fmt(sum(agentRows, "total_profit") / denominator * 100) + "%"
+          : "—";
+      } else if (field === "agent_id") {
+        td.textContent = agentId;
+      } else {
+        td.textContent = "";
+      }
+
+      tr.appendChild(td);
+    }
+
+    body.appendChild(tr);
+  }
+
+  for (const [agentId, agentRows] of pageGroups) {
+    // Chỉ hiện ngày có dữ liệu; không tạo các dòng ngày rỗng có dấu gạch ngang.
+    agentRows.sort((a, b) =>
+      String(a.report_date || "").localeCompare(String(b.report_date || ""))
+    );
+
+    for (const row of agentRows) {
+      appendDataRow(row);
+    }
+
+    appendSubtotal(agentId, agentRows);
+  }
+
+  // Dòng tổng chung toàn bộ dữ liệu đang lọc, đặt ở cuối bảng.
+  const grandTotal = document.createElement("tr");
+  grandTotal.className = "grand-total-row";
 
   for (const [i, field] of displayFields.entries()) {
     const td = document.createElement("td");
 
     if (i === 0) {
-      td.textContent = "TỔNG";
+      td.textContent = "TỔNG CHUNG";
     } else if (field === "report_date") {
-      td.textContent = rows.length + " dòng";
+      td.textContent = `${visibleRows.length} dòng`;
     } else if (totalFields.has(field)) {
-      const number = sum(field);
+      const number = sum(visibleRows, field);
       td.textContent = fmt(number);
       if (number < 0) td.classList.add("negative");
     } else if (field === "profit_percent") {
-      const denominator = sum("total_expense");
-
+      const denominator = sum(visibleRows, "total_expense");
       td.textContent = denominator
-        ? fmt(sum("total_profit") / denominator * 100) + "%"
+        ? fmt(sum(visibleRows, "total_profit") / denominator * 100) + "%"
         : "—";
     } else {
-      td.textContent = "—";
+      td.textContent = "";
     }
 
-    totalRow.appendChild(td);
+    grandTotal.appendChild(td);
   }
 
-  foot.appendChild(totalRow);
+  foot.appendChild(grandTotal);
 
-  updateStatsPagination(rows.length, totalPages);
+  updateStatsPagination(sortedGroups.length, totalPages);
 }
 
 // ======================================================
@@ -1156,8 +1261,8 @@ function updateStatsPagination(totalRows, totalPages) {
 
     <span>
       Trang ${statsPage} / ${totalPages}
-      · Hiển thị ${start}-${end}
-      trên ${totalRows.toLocaleString("vi-VN")} dòng
+      · Hiển thị đại lý ${start}-${end}
+      trên ${totalRows.toLocaleString("vi-VN")} đại lý
     </span>
 
     <button id="statsNext" class="secondary" type="button"
