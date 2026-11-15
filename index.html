@@ -1,11 +1,11 @@
 
 <!doctype html>
-<html lang="vi">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
 
-  <title>Thống kê đại lý</title>
+  <title>代理商数据统计</title>
 
   <link rel="stylesheet" href="style.css">
 
@@ -18,14 +18,14 @@
   <!-- HEADER -->
   <header class="topbar">
     <div>
-      <h1>Thống kê đại lý</h1>
-      <p>Quản lý số liệu • Nhập Excel • Lưu dữ liệu trực tuyến</p>
+      <h1>代理商数据统计</h1>
+      <p>数据管理 • Excel导入 • 在线保存</p>
     </div>
 
     <div class="auth-actions">
-      <span id="accountStatus">Chưa đăng nhập</span>
+      <span id="accountStatus">未登录</span>
       <button id="logoutBtn" class="secondary hidden" type="button">
-        Đăng xuất
+        退出登录
       </button>
     </div>
   </header>
@@ -34,21 +34,21 @@
 
     <!-- THÔNG BÁO CẤU HÌNH -->
     <section id="setupNotice" class="notice">
-      <strong>Cần cấu hình Supabase</strong>
+      <strong>需要配置 Supabase</strong>
       <p>
-        Mở <code>app.js</code>, điền
+        打开 <code>app.js</code>，填写
         <code>SUPABASE_URL</code> và
         <code>SUPABASE_ANON_KEY</code>.
-        Sau đó chạy SQL trong Supabase SQL Editor.
+        然后在 Supabase SQL Editor 中执行 SQL。
       </p>
     </section>
 
     <!-- ĐĂNG NHẬP -->
     <section id="loginPanel" class="panel login-panel">
       <div>
-        <h2>Đăng nhập</h2>
+        <h2>登录</h2>
         <p class="muted">
-          Dữ liệu thống kê chỉ hiển thị sau khi đăng nhập.
+          登录后才能查看统计数据。
         </p>
       </div>
 
@@ -66,25 +66,25 @@
         </label>
 
         <label>
-          Mật khẩu
+          密码
           <input
             id="password"
             type="password"
             autocomplete="current-password"
             required
-            placeholder="Mật khẩu Supabase"
+            placeholder="密码 Supabase"
           >
         </label>
 
         <div class="button-row">
-          <button type="submit">Đăng nhập</button>
+          <button type="submit">登录</button>
 
           <button
             id="signupBtn"
             type="button"
             class="secondary"
           >
-            Tạo tài khoản
+            创建账户
           </button>
         </div>
 
@@ -101,14 +101,14 @@
     <div id="appPanel" class="hidden">
 
       <!-- MENU -->
-      <nav class="view-tabs" aria-label="Các trang quản lý">
+      <nav class="view-tabs" aria-label="管理页面">
 
         <button
           id="statsTab"
           class="view-tab active"
           type="button"
         >
-          Thống kê dữ liệu
+          数据统计
         </button>
 
         <button
@@ -116,7 +116,7 @@
           class="view-tab"
           type="button"
         >
-          Quan hệ cấp trên
+          上下级关系
         </button>
 
       </nav>
@@ -131,22 +131,22 @@
         <section class="kpis">
 
           <article class="kpi">
-            <span>Số đại lý</span>
+            <span>代理商数量</span>
             <strong id="kpiAgents">0</strong>
           </article>
 
           <article class="kpi">
-            <span>Số dòng dữ liệu</span>
+            <span>数据行数</span>
             <strong id="kpiRows">0</strong>
           </article>
 
           <article class="kpi">
-            <span>Tổng chi phí</span>
+            <span>总费用</span>
             <strong id="kpiExpense">0</strong>
           </article>
 
           <article class="kpi">
-            <span>Tổng lãi/lỗ</span>
+            <span>总盈利/亏损</span>
             <strong id="kpiProfit">0</strong>
           </article>
 
@@ -158,16 +158,16 @@
           <div class="section-heading">
 
             <div>
-              <h2>Dữ liệu thống kê</h2>
+              <h2>统计数据</h2>
               <p class="muted">
-                Nhập file Excel mới để thay thế dữ liệu hiện tại.
+                导入新的 Excel 文件以替换当前数据。
               </p>
             </div>
 
             <div class="button-row">
 
               <label class="file-button">
-                Chọn file Excel
+                选择 Excel 文件
                 <input
                   id="excelFile"
                   type="file"
@@ -180,7 +180,7 @@
                 class="secondary"
                 type="button"
               >
-                Xuất Excel
+                导出 Excel
               </button>
 
               <button
@@ -188,7 +188,7 @@
                 class="secondary"
                 type="button"
               >
-                Tải lại
+                刷新
               </button>
 
             </div>
@@ -199,21 +199,21 @@
           <div class="filters">
 
             <label>
-              Mã đại lý / cấp trên
+              代理商编号 / 上级编号
               <input
                 id="agentFilter"
                 type="search"
-                placeholder="Nhập mã để xem toàn bộ cấp dưới..."
+                placeholder="输入编号以查看所有下级代理商..."
               >
             </label>
 
             <label>
-              Từ ngày
+              开始日期
               <input id="dateFrom" type="date">
             </label>
 
             <label>
-              Đến ngày
+              结束日期
               <input id="dateTo" type="date">
             </label>
 
@@ -222,7 +222,7 @@
               class="secondary"
               type="button"
             >
-              Xóa bộ lọc
+              清除筛选
             </button>
 
           </div>
@@ -240,33 +240,33 @@
 
               <thead>
                 <tr>
-                  <th>Mã đại lý</th>
-                  <th>Ngày</th>
-                  <th>Lương ngày</th>
-                  <th>Quỹ quảng cáo</th>
-                  <th>Hoa hồng</th>
-                  <th>Video</th>
-                  <th>Tổng chi phí</th>
-                  <th>Cấp 1 gửi</th>
-                  <th>Cấp 1 rút</th>
-                  <th>Cấp 2 gửi</th>
-                  <th>Tổng tài sản</th>
-                  <th>Tổng rút</th>
-                  <th>Lãi trong nhà</th>
-                  <th>Lãi ngoài nhà</th>
-                  <th>Chênh lệch lưu trữ</th>
-                  <th>Tổng lãi</th>
-                  <th>LN %</th>
-                  <th>Phí thủ tục</th>
-                  <th>Quảng cáo mới</th>
-                  <th>Trạng thái hợp tác</th>
+                  <th>代理商编号</th>
+                  <th>日期</th>
+                  <th>日工资</th>
+                  <th>广告基金</th>
+                  <th>佣金</th>
+                  <th>视频推广</th>
+                  <th>总费用</th>
+                  <th>一级存款</th>
+                  <th>一级取款</th>
+                  <th>二级存款</th>
+                  <th>总资产</th>
+                  <th>总取款</th>
+                  <th>内部盈利</th>
+                  <th>外部盈利</th>
+                  <th>存储差额</th>
+                  <th>总盈利</th>
+                  <th>盈利率 %</th>
+                  <th>手续费</th>
+                  <th>新广告</th>
+                  <th>合作状态</th>
                 </tr>
               </thead>
 
               <tbody id="statsBody">
                 <tr>
                   <td colspan="20" class="empty">
-                    Đăng nhập để tải dữ liệu.
+                    登录 để tải dữ liệu.
                   </td>
                 </tr>
               </tbody>
@@ -278,10 +278,10 @@
           </div>
 
           <p class="footnote">
-            Nhập đúng mã đại lý đã thiết lập cấp trên sẽ hiển thị
-            đại lý đó cùng toàn bộ cấp dưới ở mọi tầng.
-            Dòng “总计” trong Excel được bỏ qua;
-            tổng được tính lại trên website.
+            输入已设置上级关系的正确代理商编号后，将显示该代理商
+            及其所有层级的下级代理商。
+            Excel 中的“总计”行将被忽略；
+            网站会重新计算总计。
           </p>
 
         </section>
@@ -297,12 +297,12 @@
         <div class="section-heading">
 
           <div>
-            <h2>Liên kết cấp trên cho đại lý</h2>
+            <h2>设置代理商上级关系</h2>
 
             <p class="muted">
-              Website tự động liệt kê toàn bộ mã đại lý trong dữ liệu.
-              Đại lý chưa liên kết hiển thị phía trên,
-              đại lý đã liên kết hiển thị phía dưới.
+              网站会自动列出数据中的所有代理商编号。
+              未关联上级的代理商显示在上方，
+              已关联上级的代理商显示在下方。
             </p>
           </div>
 
@@ -314,11 +314,11 @@
               class="secondary"
               type="button"
             >
-              Tải mẫu Excel
+              下载 Excel 模板
             </button>
           
             <label class="file-button">
-              Tải Excel liên kết
+              导入关联 Excel
               <input
                 id="hierarchyExcelFile"
                 type="file"
@@ -331,7 +331,7 @@
               class="secondary"
               type="button"
             >
-              Tải lại danh sách
+              刷新 danh sách
             </button>
           
           </div>
@@ -347,11 +347,11 @@
 
         <!-- HƯỚNG DẪN -->
         <div class="example-note">
-          <strong>Cách dùng:</strong>
-          Ví dụ, nhập 5290331 vào ô cấp trên của đại lý 6417521
-          rồi nhấn “Liên kết”.
-          Đại lý đã liên kết sẽ tự động chuyển xuống khung phía dưới.
-          Khi xóa liên kết, đại lý sẽ trở lại khung phía trên.
+          <strong>使用方法：</strong>
+          例如，在代理商 6417521 的上级编号栏中输入 5290331
+          然后点击“关联”。
+          已关联的代理商将自动移动到下方列表。
+          删除关联后，该代理商将返回上方列表。
         </div>
 
         <!-- ================================== -->
@@ -363,10 +363,10 @@
           <div class="section-heading compact-heading">
 
             <div>
-              <h2>1. Danh sách đại lý chưa liên kết</h2>
+              <h2>1. 未关联上级的代理商列表</h2>
 
               <p class="muted">
-                Các đại lý chưa có cấp trên trực tiếp.
+                尚未设置直属上级的代理商。
               </p>
             </div>
 
@@ -374,19 +374,19 @@
               id="unassignedCount"
               class="count-pill"
             >
-              0 mã
+              0 个编号
             </strong>
 
           </div>
 
           <!-- TÌM KIẾM -->
           <label class="unassigned-search-label">
-            Tìm mã đại lý
+            搜索代理商编号
 
             <input
               id="unassignedSearch"
               type="search"
-              placeholder="Nhập mã để lọc cả hai danh sách..."
+              placeholder="输入编号以筛选两个列表..."
             >
           </label>
 
@@ -397,17 +397,17 @@
 
               <thead>
                 <tr>
-                  <th>Mã đại lý</th>
-                  <th>Số dòng thống kê</th>
-                  <th>Mã cấp trên trực tiếp</th>
-                  <th>Thao tác</th>
+                  <th>代理商编号</th>
+                  <th>统计数据行数</th>
+                  <th>直属上级编号</th>
+                  <th>操作</th>
                 </tr>
               </thead>
 
               <tbody id="unassignedBody">
                 <tr>
                   <td colspan="4" class="empty">
-                    Đang tải danh sách...
+                    正在加载列表...
                   </td>
                 </tr>
               </tbody>
@@ -427,11 +427,11 @@
           <div class="section-heading compact-heading">
 
             <div>
-              <h2>2. Danh sách đại lý đã liên kết</h2>
+              <h2>2. 已关联上级的代理商列表</h2>
 
               <p class="muted">
-                Các đại lý đã có cấp trên trực tiếp.
-                Có thể cập nhật hoặc xóa liên kết.
+                已设置直属上级的代理商。
+                可以更新或删除关联。
               </p>
             </div>
 
@@ -439,7 +439,7 @@
               id="linkedCount"
               class="count-pill"
             >
-              0 mã
+              0 个编号
             </strong>
 
           </div>
@@ -451,17 +451,17 @@
 
               <thead>
                 <tr>
-                  <th>Mã đại lý</th>
-                  <th>Số dòng thống kê</th>
-                  <th>Mã cấp trên trực tiếp</th>
-                  <th>Thao tác</th>
+                  <th>代理商编号</th>
+                  <th>统计数据行数</th>
+                  <th>直属上级编号</th>
+                  <th>操作</th>
                 </tr>
               </thead>
 
               <tbody id="linkedBody">
                 <tr>
                   <td colspan="4" class="empty">
-                    Đang tải danh sách...
+                    正在加载列表...
                   </td>
                 </tr>
               </tbody>
