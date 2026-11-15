@@ -438,7 +438,7 @@ async function loadHierarchy(){
     for(let from = 0; ; from += FETCH_SIZE){
       const {data,error} = await db
         .from("agent_hierarchy")
-        .select("agent_id,parent_agent_id,updated_at")
+        .select("agent_id,parent_agent_id")
         .order("agent_id",{ascending:true})
         .range(from,from + FETCH_SIZE - 1);
 
