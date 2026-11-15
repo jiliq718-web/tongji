@@ -1245,6 +1245,12 @@ function render() {
       const number = sum(directChildRows, field);
       td.textContent = fmt(number);
       if (number < 0) td.classList.add("negative");
+    } else if (field === "total_assets" || field === "total_withdrawals") {
+      // Tổng nạp (Tổng tài sản) và Tổng rút chỉ cộng các đại lý trực thuộc trực tiếp.
+      // Không tính đại lý gốc hoặc các cấp dưới sâu hơn.
+      const number = sum(directChildRows, field);
+      td.textContent = fmt(number);
+      if (number < 0) td.classList.add("negative");
     } else if (field === "total_profit") {
       // Tổng lãi chung = Chênh lệch lưu trữ tổng chung - Tổng chi phí tổng chung.
       // Chênh lệch lưu trữ đang lấy theo tổng của đại lý đứng đầu.
