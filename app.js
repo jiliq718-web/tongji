@@ -6,40 +6,33 @@
 const SUPABASE_URL = "https://zuzyekphhcwwidcbvnqq.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_OxHoqPnBjsvYos7WUm2kpg_hk8GEzyd";
 
-// ======================================================
-// 2. CẤU HÌNH CÁC CỘT DỮ LIỆU
-// ======================================================
+const FETCH_SIZE = 500;
+const PAGE_SIZE = 200;
 
 const COLS = [
-  ["agent_id", ["代理ID","Mã đại lý","代理id","代理编号"]],
-  ["report_date", ["日期","Ngày","日期日期"]],
-  ["daily_salary", ["日薪","Lương ngày"]],
-  ["ad_funds", ["广告资金","Quỹ quảng cáo","Quảng cáo"]],
-  ["commission", ["佣金","Hoa hồng"]],
-  ["video_promotion", ["视频推广","Video","Video quảng bá"]],
-  ["total_expense", ["总费用","Tổng chi phí"]],
-  ["level1_deposit", ["一级首存","一级存","一级存款","Cấp 1 gửi"]],
-  ["level1_withdrawal", ["一级二存","一级存二","一级存款二","Cấp 1 rút"]],
-  ["level2_deposit", ["一级三存","二级存","Cấp 2 gửi"]],
-  ["total_assets", ["总存款金额","Tổng tài sản","Tổng tiền gửi"]],
-  ["total_withdrawals", ["总取款金额","Tổng rút","Tổng tiền rút"]],
-  ["internal_profit", ["内盘盈亏","Lãi trong nhà"]],
-  ["external_profit", ["外盘盈亏","Lãi ngoài nhà"]],
-  ["storage_diff", ["存提差","Chênh lệch lưu trữ"]],
-  ["total_profit", ["总盈亏","总盈亏额","Tổng lãi","Tổng lãi/lỗ"]],
-  ["profit_percent", ["利润百分比","LN %","Tỷ lệ lợi nhuận"]],
-  ["handling_fee", ["手续费","Phí thủ tục"]],
-  ["new_ad_status", ["新广告费是否异常","Quảng cáo mới","Tình trạng quảng cáo"]],
-  ["cooperation_status", ["合作状态","Trạng thái hợp tác"]]
+  ["agent_id", ["代理ID", "Mã đại lý", "代理id", "代理编号"]],
+  ["report_date", ["日期", "Ngày", "日期日期"]],
+  ["daily_salary", ["日薪", "Lương ngày"]],
+  ["ad_funds", ["广告资金", "Quỹ quảng cáo", "Quảng cáo"]],
+  ["commission", ["佣金", "Hoa hồng"]],
+  ["video_promotion", ["视频推广", "Video", "Video quảng bá"]],
+  ["total_expense", ["总费用", "Tổng chi phí"]],
+  ["level1_deposit", ["一级首存", "一级存", "一级存款", "Cấp 1 gửi"]],
+  ["level1_withdrawal", ["一级二存", "一级存二", "一级存款二", "Cấp 1 rút"]],
+  ["level2_deposit", ["一级三存", "二级存", "Cấp 2 gửi"]],
+  ["total_assets", ["总存款金额", "Tổng tài sản", "Tổng tiền gửi"]],
+  ["total_withdrawals", ["总取款金额", "Tổng rút", "Tổng tiền rút"]],
+  ["internal_profit", ["内盘盈亏", "Lãi trong nhà"]],
+  ["external_profit", ["外盘盈亏", "Lãi ngoài nhà"]],
+  ["storage_diff", ["存提差", "Chênh lệch lưu trữ"]],
+  ["total_profit", ["总盈亏", "总盈亏额", "Tổng lãi", "Tổng lãi/lỗ"]],
+  ["profit_percent", ["利润百分比", "LN %", "Tỷ lệ lợi nhuận"]],
+  ["handling_fee", ["手续费", "Phí thủ tục"]],
+  ["new_ad_status", ["新广告费是否异常", "Quảng cáo mới", "Tình trạng quảng cáo"]],
+  ["cooperation_status", ["合作状态", "Trạng thái hợp tác"]]
 ];
 
-const NUMERIC_FIELDS = COLS.slice(2,18).map(x => x[0]);
-
-// Mỗi lần tải 500 dòng từ Supabase
-const FETCH_SIZE = 500;
-
-// Mỗi trang chỉ hiển thị 200 dòng
-const PAGE_SIZE = 200;
+const NUMERIC_FIELDS = COLS.slice(2, 18).map(c => c[0]);
 
 let db = null;
 let currentRows = [];
@@ -51,167 +44,172 @@ let importingExcel = false;
 const $ = id => document.getElementById(id);
 
 // ======================================================
-// 3. HÀM HỖ TRỢ
+// 2. HÀM HỖ TRỢ
 // ======================================================
 
-function configured(){
+function configured() {
   return SUPABASE_URL.startsWith("https://") &&
-    !SUPABASE_URL.includes("PASTE_") &&
     !SUPABASE_ANON_KEY.includes("PASTE_") &&
     SUPABASE_ANON_KEY.length > 20;
 }
 
-function msg(id, text, error = false){
+function msg(id, text, error = false) {
   const el = $(id);
-  if(!el) return;
-
+  if (!el) return;
   el.textContent = text;
   el.classList.toggle("error", error);
 }
 
-function normalize(s){
-  return String(s ?? "")
+function normalize(value) {
+  return String(value ?? "")
     .trim()
     .toLowerCase()
-    .replace(/\s+/g,"")
-    .replace(/[：:]/g,"");
+    .replace(/\s+/g, "")
+    .replace(/[：:]/g, "");
 }
 
-function cleanId(v){
-  return String(v ?? "").trim();
+function cleanId(value) {
+  return String(value ?? "").trim();
 }
 
-function parseNumber(v){
-  if(typeof v === "number"){
-    return Number.isFinite(v) ? v : null;
+function parseNumber(value) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? value : null;
   }
 
-  if(v === null || v === undefined || String(v).trim() === ""){
+  if (value === null || value === undefined || String(value).trim() === "") {
     return null;
   }
 
-  const s = String(v)
-    .replace(/[,，￥¥%\s]/g,"")
-    .replace(/[()]/g,"");
+  const number = Number(
+    String(value).replace(/[,，￥¥%\s]/g, "").replace(/[()]/g, "")
+  );
 
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
+  return Number.isFinite(number) ? number : null;
 }
 
-function parseDate(v){
-  if(v instanceof Date && !isNaN(v)){
-    return v.toISOString().slice(0,10);
+function parseDate(value) {
+  if (value instanceof Date && !isNaN(value)) {
+    return value.toISOString().slice(0, 10);
   }
 
-  if(typeof v === "number" && v > 20000 && v < 80000){
-    const d = XLSX.SSF.parse_date_code(v);
+  if (typeof value === "number" && value > 20000 && value < 80000) {
+    const d = XLSX.SSF.parse_date_code(value);
 
-    if(d){
-      return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`;
+    if (d) {
+      return `${d.y}-${String(d.m).padStart(2, "0")}-${String(d.d).padStart(2, "0")}`;
     }
   }
 
-  const s = String(v ?? "").trim();
+  const s = String(value ?? "").trim();
 
   let m = s.match(/^(\d{4})[\/.-](\d{1,2})[\/.-](\d{1,2})/);
 
-  if(m){
-    return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+  if (m) {
+    return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
   }
 
   m = s.match(/^(\d{1,2})月(\d{1,2})(?:日|号)?$/);
 
-  if(m){
-    return `${new Date().getFullYear()}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`;
+  if (m) {
+    return `${new Date().getFullYear()}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
   }
 
   m = s.match(/^(\d{1,2})[\/.-](\d{1,2})$/);
 
-  if(m){
-    return `${new Date().getFullYear()}-${m[1].padStart(2,"0")}-${m[2].padStart(2,"0")}`;
+  if (m) {
+    return `${new Date().getFullYear()}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
   }
 
   return s;
 }
 
-function dateLabel(s){
-  if(!s) return "";
+function dateLabel(value) {
+  if (!value) return "";
 
-  const d = new Date(`${s}T00:00:00`);
+  const d = new Date(`${value}T00:00:00`);
 
   return isNaN(d)
-    ? s
-    : `${d.getMonth()+1}月${d.getDate()}号`;
+    ? value
+    : `${d.getMonth() + 1}月${d.getDate()}号`;
 }
 
-function fmt(v){
-  if(v === null || v === undefined || v === ""){
-    return "—";
-  }
+function fmt(value) {
+  if (value === null || value === undefined || value === "") return "—";
 
-  if(typeof v === "number"){
-    return v.toLocaleString("vi-VN",{
-      maximumFractionDigits:4
+  if (typeof value === "number") {
+    return value.toLocaleString("vi-VN", {
+      maximumFractionDigits: 4
     });
   }
 
-  return String(v);
+  return String(value);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
 }
 
 // ======================================================
-// 4. ĐỌC FILE EXCEL
+// 3. ĐỌC FILE EXCEL THỐNG KÊ
 // ======================================================
 
-function headerIndex(rows){
-  let best = {row:-1,score:0,map:{}};
+function headerIndex(rows) {
+  let best = { row: -1, score: 0, map: {} };
 
-  for(let r = 0; r < Math.min(rows.length,20); r++){
+  for (let r = 0; r < Math.min(rows.length, 20); r++) {
     const cells = (rows[r] || []).map(normalize);
     const map = {};
     let score = 0;
 
-    for(const [key,aliases] of COLS){
-      const idx = cells.findIndex(c =>
-        [key,...aliases.map(normalize)].includes(c)
+    for (const [key, aliases] of COLS) {
+      const idx = cells.findIndex(cell =>
+        [key, ...aliases.map(normalize)].includes(cell)
       );
 
-      if(idx >= 0){
+      if (idx >= 0) {
         map[key] = idx;
         score++;
       }
     }
 
-    if(score > best.score){
-      best = {row:r,score,map};
+    if (score > best.score) {
+      best = { row: r, score, map };
     }
   }
 
   return best;
 }
 
-function rowToRecord(row,map,lastAgent){
+function rowToRecord(row, map, lastAgent) {
   const out = {};
 
-  for(const [key] of COLS){
+  for (const [key] of COLS) {
     const idx = map[key];
     out[key] = idx === undefined ? null : row[idx];
   }
 
   let agent = String(out.agent_id ?? "").trim();
 
-  if(!agent || agent === "undefined" || agent === "null"){
+  if (!agent || agent === "undefined" || agent === "null") {
     agent = lastAgent || "";
   }
 
-  if(!agent || normalize(agent) === "总计" || normalize(agent) === "tổng"){
+  if (!agent || ["总计", "tổng"].includes(normalize(agent))) {
     return null;
   }
 
   out.agent_id = agent;
   out.report_date = parseDate(out.report_date);
 
-  for(const f of NUMERIC_FIELDS){
-    out[f] = parseNumber(out[f]);
+  for (const field of NUMERIC_FIELDS) {
+    out[field] = parseNumber(out[field]);
   }
 
   out.new_ad_status = out.new_ad_status == null
@@ -222,101 +220,90 @@ function rowToRecord(row,map,lastAgent){
     ? ""
     : String(out.cooperation_status).trim();
 
-  if(!out.report_date || !/^\d{4}-\d{2}-\d{2}$/.test(out.report_date)){
+  if (!out.report_date || !/^\d{4}-\d{2}-\d{2}$/.test(out.report_date)) {
     return null;
   }
 
   return out;
 }
 
-function parseWorkbook(arrayBuffer){
-  const wb = XLSX.read(arrayBuffer,{
-    type:"array",
-    cellDates:true
+function parseWorkbook(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, {
+    type: "array",
+    cellDates: true
   });
 
   const records = [];
   const skipped = [];
 
-  // Đọc tất cả sheet có cấu trúc dữ liệu phù hợp
-  for(const sheetName of wb.SheetNames){
+  for (const sheetName of wb.SheetNames) {
     const ws = wb.Sheets[sheetName];
 
-    const rows = XLSX.utils.sheet_to_json(ws,{
-      header:1,
-      defval:null,
-      raw:true
+    const rows = XLSX.utils.sheet_to_json(ws, {
+      header: 1,
+      defval: null,
+      raw: true
     });
 
     const h = headerIndex(rows);
 
-    if(h.score < 8){
+    if (h.score < 8) {
       skipped.push(sheetName);
       continue;
     }
 
     let lastAgent = "";
 
-    for(let i = h.row + 1; i < rows.length; i++){
+    for (let i = h.row + 1; i < rows.length; i++) {
       const row = rows[i] || [];
 
       const rawAgent = h.map.agent_id === undefined
         ? ""
         : String(row[h.map.agent_id] ?? "").trim();
 
-      if(
+      if (
         rawAgent &&
         normalize(rawAgent) !== "总计" &&
         normalize(rawAgent) !== "tổng"
-      ){
+      ) {
         lastAgent = rawAgent;
       }
 
-      const rec = rowToRecord(row,h.map,lastAgent);
+      const record = rowToRecord(row, h.map, lastAgent);
 
-      if(rec){
-        records.push(rec);
-      }
+      if (record) records.push(record);
     }
   }
 
-  if(!records.length){
-    throw new Error(
-      "Không tìm thấy dữ liệu hợp lệ. Kiểm tra tiêu đề mã đại lý và ngày trong Excel."
-    );
+  if (!records.length) {
+    throw new Error("Không tìm thấy dữ liệu hợp lệ. Kiểm tra tiêu đề mã đại lý và ngày trong Excel.");
   }
 
-  // Loại bỏ dòng trùng mã đại lý + ngày
   const unique = new Map();
 
-  for(const r of records){
-    unique.set(`${r.agent_id}__${r.report_date}`,r);
+  for (const record of records) {
+    unique.set(`${record.agent_id}__${record.report_date}`, record);
   }
 
-  if(skipped.length){
-    console.info("Đã bỏ qua sheet phụ:",skipped);
+  if (skipped.length) {
+    console.info("Đã bỏ qua sheet phụ:", skipped);
   }
 
   return [...unique.values()];
 }
 
 // ======================================================
-// 5. NHẬP EXCEL - THAY THẾ TOÀN BỘ DỮ LIỆU CŨ
+// 4. NHẬP EXCEL THỐNG KÊ - THAY THẾ DỮ LIỆU CŨ
 // ======================================================
 
-async function importExcel(file){
-  if(!db){
-    throw new Error("Chưa cấu hình Supabase.");
-  }
+async function importExcel(file) {
+  if (!db) throw new Error("Chưa cấu hình Supabase.");
+  if (importingExcel) throw new Error("Đang nhập một file khác. Vui lòng chờ.");
 
-  if(importingExcel){
-    throw new Error("Đang nhập một file khác. Vui lòng chờ hoàn tất.");
-  }
-
-  // Đọc và kiểm tra file trước khi xóa dữ liệu cũ
+  // Đọc và kiểm tra trước khi xóa dữ liệu cũ.
   const records = parseWorkbook(await file.arrayBuffer());
 
-  if(!records.length){
+  if (!records.length) {
     throw new Error("File Excel không có dữ liệu hợp lệ.");
   }
 
@@ -324,40 +311,34 @@ async function importExcel(file){
     `CẢNH BÁO: THAY THẾ TOÀN BỘ DỮ LIỆU CŨ\n\n` +
     `File mới: ${file.name}\n` +
     `Số dòng chuẩn bị nhập: ${records.length.toLocaleString("vi-VN")}\n\n` +
-    `Toàn bộ dữ liệu cũ trong agent_stats sẽ bị xóa.\n` +
-    `Dữ liệu mới sẽ được nhập thay thế.\n\n` +
-    `Các liên kết cấp trên trong agent_hierarchy vẫn được giữ nguyên.\n\n` +
+    `Dữ liệu cũ trong agent_stats sẽ bị thay thế.\n` +
+    `Quan hệ cấp trên trong agent_hierarchy vẫn được giữ nguyên.\n\n` +
     `Bạn có chắc chắn muốn tiếp tục không?`
   );
 
-  if(!confirmed){
-    msg("dataMessage","Đã hủy nhập. Dữ liệu cũ vẫn được giữ nguyên.");
+  if (!confirmed) {
+    msg("dataMessage", "Đã hủy nhập. Dữ liệu cũ vẫn được giữ nguyên.");
     return;
   }
 
   importingExcel = true;
 
   const fileInput = $("excelFile");
-  if(fileInput) fileInput.disabled = true;
+  if (fileInput) fileInput.disabled = true;
 
-  try{
-    msg(
-      "dataMessage",
-      `Đang thay thế dữ liệu bằng ${records.length.toLocaleString("vi-VN")} dòng mới...`
-    );
+  try {
+    msg("dataMessage", `Đang nhập ${records.length.toLocaleString("vi-VN")} dòng...`);
 
-    // Gọi hàm SQL: xóa dữ liệu cũ và nhập dữ liệu mới
-    // trong cùng một giao dịch.
-    const {data,error} = await db.rpc(
-      "replace_agent_stats",
-      {p_rows:records}
-    );
+    // RPC xóa dữ liệu cũ và nhập dữ liệu mới trong cùng giao dịch.
+    const { data, error } = await db.rpc("replace_agent_stats", {
+      p_rows: records
+    });
 
-    if(error){
-      throw error;
-    }
+    if (error) throw error;
 
-    // Tải lại dữ liệu sau khi thay thế thành công
+    currentRows = [];
+    hierarchyRows = [];
+
     await loadData();
 
     msg(
@@ -365,60 +346,284 @@ async function importExcel(file){
       `Thay thế thành công! Đã nhập ${Number(data).toLocaleString("vi-VN")} dòng từ ${file.name}.`
     );
 
-  }catch(error){
+  } catch (error) {
     msg(
       "dataMessage",
-      `Nhập thất bại: ${error.message || error}. Nếu giao dịch SQL bị lỗi, dữ liệu cũ được hoàn tác.`,
+      `Nhập thất bại: ${error.message || error}. Nếu RPC lỗi, dữ liệu cũ được giữ nguyên.`,
       true
     );
 
     throw error;
 
-  }finally{
+  } finally {
     importingExcel = false;
-
-    if(fileInput) fileInput.disabled = false;
+    if (fileInput) fileInput.disabled = false;
   }
 }
 
 // ======================================================
-// 6. QUAN HỆ CẤP TRÊN
+// 5. TẠO GIAO DIỆN NHẬP LIÊN KẾT HÀNG LOẠT
 // ======================================================
 
-function parentMap(){
+function setupBulkHierarchyUI() {
+  const view = $("hierarchyView");
+  if (!view) return;
+
+  let area = $("bulkHierarchyArea");
+
+  if (!area) {
+    area = document.createElement("div");
+    area.id = "bulkHierarchyArea";
+    area.className = "example-note";
+    area.style.marginBottom = "16px";
+
+    area.innerHTML = `
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="downloadHierarchyTemplateBtn" type="button" class="secondary">
+          Tải mẫu Excel liên kết
+        </button>
+
+        <label class="file-button">
+          Tải lên liên kết hàng loạt
+          <input id="hierarchyExcelFile" type="file" accept=".xlsx,.xls,.csv">
+        </label>
+      </div>
+
+      <p style="margin-top:10px">
+        Tải mẫu Excel, điền mã đại lý và mã cấp trên trực tiếp vào từng dòng,
+        sau đó tải file lên để liên kết nhiều đại lý cùng lúc.
+      </p>
+      <p id="bulkHierarchyMessage" class="message" aria-live="polite"></p>
+    `;
+
+    const example = view.querySelector(".example-note");
+
+    if (example) {
+      example.insertAdjacentElement("afterend", area);
+    } else {
+      view.prepend(area);
+    }
+  }
+
+  $("downloadHierarchyTemplateBtn")?.addEventListener(
+    "click",
+    downloadHierarchyTemplate
+  );
+
+  $("hierarchyExcelFile")?.addEventListener("change", async event => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await importHierarchyExcel(file);
+    } catch (error) {
+      msg("bulkHierarchyMessage", `Nhập thất bại: ${error.message}`, true);
+    } finally {
+      event.target.value = "";
+    }
+  });
+}
+
+// ======================================================
+// 6. TẢI MẪU EXCEL LIÊN KẾT
+// ======================================================
+
+function downloadHierarchyTemplate() {
+  const rows = [
+    ["agent_id", "parent_agent_id"],
+    ["6417521", "5290331"],
+    ["111853", "118380"],
+    ["", ""]
+  ];
+
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+
+  XLSX.utils.book_append_sheet(wb, ws, "QuanHeCapTren");
+
+  XLSX.writeFile(wb, "mau-lien-ket-cap-tren.xlsx");
+
+  msg("bulkHierarchyMessage", "Đã tải mẫu Excel. Hãy thay các mã ví dụ bằng mã của bạn.");
+}
+
+// ======================================================
+// 7. NHẬP LIÊN KẾT CẤP TRÊN HÀNG LOẠT
+// ======================================================
+
+function parseHierarchyWorkbook(arrayBuffer) {
+  const wb = XLSX.read(arrayBuffer, {
+    type: "array",
+    cellDates: true
+  });
+
+  const rows = XLSX.utils.sheet_to_json(
+    wb.Sheets[wb.SheetNames[0]],
+    { header: 1, defval: "" }
+  );
+
+  let headerRow = -1;
+  let childIndex = -1;
+  let parentIndex = -1;
+
+  for (let i = 0; i < Math.min(rows.length, 20); i++) {
+    const headers = rows[i].map(normalize);
+
+    childIndex = headers.findIndex(v =>
+      ["agent_id", "mãđạilý", "mãđạilýcấpdưới", "代理id", "代理编号"].includes(v)
+    );
+
+    parentIndex = headers.findIndex(v =>
+      ["parent_agent_id", "mãcấptrêntrựctiếp", "mãcấptrên", "上级代理id"].includes(v)
+    );
+
+    if (childIndex >= 0 && parentIndex >= 0) {
+      headerRow = i;
+      break;
+    }
+  }
+
+  if (headerRow < 0) {
+    throw new Error("Không tìm thấy hai cột agent_id và parent_agent_id trong file mẫu.");
+  }
+
+  const result = [];
+  const seen = new Set();
+
+  for (let i = headerRow + 1; i < rows.length; i++) {
+    const child = cleanId(rows[i][childIndex]);
+    const parent = cleanId(rows[i][parentIndex]);
+
+    if (!child && !parent) continue;
+
+    if (!child || !parent) {
+      throw new Error(`Dòng ${i + 1}: Thiếu mã đại lý hoặc mã cấp trên.`);
+    }
+
+    if (child === parent) {
+      throw new Error(`Dòng ${i + 1}: Đại lý không thể là cấp trên của chính nó.`);
+    }
+
+    if (seen.has(child)) {
+      throw new Error(`Mã đại lý ${child} bị trùng trong file.`);
+    }
+
+    seen.add(child);
+    result.push({
+      agent_id: child,
+      parent_agent_id: parent
+    });
+  }
+
+  if (!result.length) {
+    throw new Error("File không có dòng liên kết hợp lệ.");
+  }
+
+  return result;
+}
+
+async function importHierarchyExcel(file) {
+  if (!db) throw new Error("Chưa kết nối Supabase.");
+
+  const records = parseHierarchyWorkbook(await file.arrayBuffer());
+
+  const confirmed = confirm(
+    `Bạn chuẩn bị liên kết ${records.length.toLocaleString("vi-VN")} đại lý.\n\n` +
+    `Nếu mã đại lý đã có cấp trên, quan hệ cũ sẽ được cập nhật bằng quan hệ mới.\n\n` +
+    `Bạn có muốn tiếp tục không?`
+  );
+
+  if (!confirmed) return;
+
+  const button = $("hierarchyExcelFile");
+  if (button) button.disabled = true;
+
+  try {
+    msg(
+      "bulkHierarchyMessage",
+      `Đang kiểm tra và nhập ${records.length.toLocaleString("vi-VN")} liên kết...`
+    );
+
+    // Kiểm tra vòng lặp trước khi ghi.
+    const map = parentMap();
+
+    for (const item of records) {
+      map.set(item.agent_id, item.parent_agent_id);
+    }
+
+    for (const item of records) {
+      let cursor = item.parent_agent_id;
+      const seen = new Set([item.agent_id]);
+
+      while (cursor) {
+        if (seen.has(cursor)) {
+          throw new Error(`Liên kết của ${item.agent_id} tạo vòng lặp. Hãy kiểm tra file.`);
+        }
+
+        seen.add(cursor);
+        cursor = map.get(cursor) || "";
+      }
+    }
+
+    // Ghi theo từng đợt để tránh request quá lớn.
+    const batchSize = 200;
+
+    for (let i = 0; i < records.length; i += batchSize) {
+      const batch = records.slice(i, i + batchSize);
+
+      const { error } = await db
+        .from("agent_hierarchy")
+        .upsert(batch, { onConflict: "agent_id" });
+
+      if (error) throw error;
+
+      msg(
+        "bulkHierarchyMessage",
+        `Đã lưu ${Math.min(i + batch.length, records.length).toLocaleString("vi-VN")} / ${records.length.toLocaleString("vi-VN")} liên kết...`
+      );
+    }
+
+    await loadHierarchy();
+
+    msg(
+      "bulkHierarchyMessage",
+      `Hoàn tất! Đã liên kết ${records.length.toLocaleString("vi-VN")} đại lý.`
+    );
+
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+// ======================================================
+// 8. QUAN HỆ CẤP TRÊN
+// ======================================================
+
+function parentMap() {
   const map = new Map();
 
-  for(const r of hierarchyRows){
-    if(r.agent_id && r.parent_agent_id){
-      map.set(
-        String(r.agent_id),
-        String(r.parent_agent_id)
-      );
+  for (const row of hierarchyRows) {
+    if (row.agent_id && row.parent_agent_id) {
+      map.set(String(row.agent_id), String(row.parent_agent_id));
     }
   }
 
   return map;
 }
 
-function descendantIds(rootId){
+function descendantIds(rootId) {
   const root = cleanId(rootId);
   const found = new Set([root]);
 
   let changed = true;
 
-  while(changed){
+  while (changed) {
     changed = false;
 
-    for(const r of hierarchyRows){
-      const child = cleanId(r.agent_id);
-      const parent = cleanId(r.parent_agent_id);
+    for (const row of hierarchyRows) {
+      const child = cleanId(row.agent_id);
+      const parent = cleanId(row.parent_agent_id);
 
-      if(
-        parent &&
-        found.has(parent) &&
-        child &&
-        !found.has(child)
-      ){
+      if (parent && found.has(parent) && child && !found.has(child)) {
         found.add(child);
         changed = true;
       }
@@ -428,27 +633,24 @@ function descendantIds(rootId){
   return found;
 }
 
-// Tải toàn bộ quan hệ theo từng trang
-async function loadHierarchy(){
-  if(!db) return;
+async function loadHierarchy() {
+  if (!db) return;
 
-  try{
+  try {
     let allRows = [];
 
-    for(let from = 0; ; from += FETCH_SIZE){
-      const {data,error} = await db
+    for (let from = 0; ; from += FETCH_SIZE) {
+      const { data, error } = await db
         .from("agent_hierarchy")
         .select("agent_id,parent_agent_id")
-        .order("agent_id",{ascending:true})
-        .range(from,from + FETCH_SIZE - 1);
+        .order("agent_id", { ascending: true })
+        .range(from, from + FETCH_SIZE - 1);
 
-      if(error) throw error;
+      if (error) throw error;
 
       allRows = allRows.concat(data || []);
 
-      if(!data || data.length < FETCH_SIZE){
-        break;
-      }
+      if (!data || data.length < FETCH_SIZE) break;
     }
 
     hierarchyRows = allRows;
@@ -456,78 +658,108 @@ async function loadHierarchy(){
     renderHierarchy();
     render();
 
-  }catch(error){
-    msg(
-      "hierarchyMessage",
-      `Không tải được quan hệ cấp trên: ${error.message}`,
-      true
-    );
-
-    hierarchyRows = [];
-    renderHierarchy();
+  } catch (error) {
+    msg("hierarchyMessage", `Không tải được quan hệ cấp trên: ${error.message}`, true);
   }
 }
 
-function renderHierarchy(){
-  // Hai khung được cập nhật cùng lúc
+// ======================================================
+// 9. TẠO KHUNG ĐẠI LÝ ĐÃ LIÊN KẾT
+// ======================================================
+
+function setupLinkedPanel() {
+  const view = $("hierarchyView");
+  if (!view || $("linkedBody")) return;
+
+  const panel = document.createElement("div");
+  panel.className = "unassigned-panel";
+  panel.style.marginTop = "20px";
+
+  panel.innerHTML = `
+    <div class="section-heading compact-heading">
+      <div>
+        <h2>2. Danh sách đại lý đã liên kết</h2>
+        <p class="muted">Các đại lý đã có cấp trên trực tiếp. Có thể cập nhật hoặc xóa liên kết.</p>
+      </div>
+      <strong id="linkedCount" class="count-pill">0 mã</strong>
+    </div>
+
+    <div class="table-wrap unassigned-table-wrap">
+      <table class="hierarchy-table">
+        <thead>
+          <tr>
+            <th>Mã đại lý</th>
+            <th>Số dòng thống kê</th>
+            <th>Mã cấp trên trực tiếp</th>
+            <th>Thao tác</th>
+          </tr>
+        </thead>
+        <tbody id="linkedBody">
+          <tr><td colspan="4" class="empty">Đang tải...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  `;
+
+  const firstPanel = view.querySelector(".unassigned-panel");
+
+  if (firstPanel) {
+    firstPanel.insertAdjacentElement("afterend", panel);
+  } else {
+    view.appendChild(panel);
+  }
+}
+
+// ======================================================
+// 10. HIỂN THỊ HAI DANH SÁCH
+// ======================================================
+
+function renderHierarchy() {
+  setupLinkedPanel();
   renderAgentLinks();
 }
 
-// ======================================================
-// 7. HIỂN THỊ HAI DANH SÁCH ĐẠI LÝ
-// ======================================================
-
-function renderAgentLinks(){
+function renderAgentLinks() {
   const unlinkedBody = $("unassignedBody");
   const linkedBody = $("linkedBody");
 
-  if(!unlinkedBody || !linkedBody){
-    return;
-  }
+  if (!unlinkedBody || !linkedBody) return;
 
-  // Đếm số dòng thống kê theo từng mã đại lý
   const counts = new Map();
 
-  for(const r of currentRows){
-    const id = cleanId(r.agent_id);
-
-    if(id){
-      counts.set(id,(counts.get(id) || 0) + 1);
-    }
+  for (const row of currentRows) {
+    const id = cleanId(row.agent_id);
+    if (id) counts.set(id, (counts.get(id) || 0) + 1);
   }
 
   const parents = parentMap();
 
-  const all = [...counts.entries()].sort((a,b) =>
-    a[0].localeCompare(b[0],undefined,{numeric:true})
+  const all = [...counts.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0], undefined, { numeric: true })
   );
 
   const query = normalize($("unassignedSearch")?.value || "");
 
-  // Tìm kiếm áp dụng cho cả hai danh sách
   const filtered = all.filter(([id]) =>
     !query ||
     normalize(id).includes(query) ||
     normalize(parents.get(id) || "").includes(query)
   );
 
-  // Chia đại lý thành hai nhóm
   const unlinked = filtered.filter(([id]) => !parents.has(id));
   const linked = filtered.filter(([id]) => parents.has(id));
 
-  // Tổng số lượng
-  if($("unassignedCount")){
+  if ($("unassignedCount")) {
     $("unassignedCount").textContent =
       `${unlinked.length.toLocaleString("vi-VN")} mã`;
   }
 
-  if($("linkedCount")){
+  if ($("linkedCount")) {
     $("linkedCount").textContent =
       `${linked.length.toLocaleString("vi-VN")} mã`;
   }
 
-  // Tạo một dòng đại lý
-  function createAgentRow(id,count,isLinked){
+  function createAgentRow(id, count, isLinked) {
     const tr = document.createElement("tr");
 
     const idCell = document.createElement("td");
@@ -537,130 +769,98 @@ function renderAgentLinks(){
     countCell.textContent = count.toLocaleString("vi-VN");
 
     const parentCell = document.createElement("td");
+    const input = document.createElement("input");
 
-    const parentInput = document.createElement("input");
-    parentInput.type = "text";
-    parentInput.className = "inline-parent-input";
-    parentInput.placeholder = "Nhập mã cấp trên";
-    parentInput.value = isLinked ? parents.get(id) : "";
+    input.type = "text";
+    input.className = "inline-parent-input";
+    input.placeholder = "Nhập mã cấp trên";
+    input.value = isLinked ? parents.get(id) : "";
 
-    parentInput.setAttribute(
-      "aria-label",
-      `Mã cấp trên trực tiếp của ${id}`
-    );
+    parentCell.appendChild(input);
 
-    parentCell.appendChild(parentInput);
+    const actionCell = document.createElement("td");
+    actionCell.className = "row-actions";
 
-    const action = document.createElement("td");
-    action.className = "row-actions";
+    const saveButton = document.createElement("button");
+    saveButton.className = "small-button";
+    saveButton.textContent = isLinked ? "Cập nhật" : "Liên kết";
 
-    const link = document.createElement("button");
-    link.className = "small-button";
-    link.textContent = isLinked ? "Cập nhật" : "Liên kết";
-
-    link.addEventListener("click",() => {
-      saveParentFor(id,parentInput.value);
+    saveButton.addEventListener("click", () => {
+      saveParentFor(id, input.value);
     });
 
-    action.appendChild(link);
+    actionCell.appendChild(saveButton);
 
-    // Chỉ hiện nút xóa trong danh sách đã liên kết
-    if(isLinked){
-      const unlink = document.createElement("button");
+    if (isLinked) {
+      const deleteButton = document.createElement("button");
+      deleteButton.className = "danger small-button";
+      deleteButton.textContent = "Xóa liên kết";
 
-      unlink.className = "danger small-button";
-      unlink.textContent = "Xóa liên kết";
-
-      unlink.addEventListener("click",() => {
+      deleteButton.addEventListener("click", () => {
         deleteParent(id);
       });
 
-      action.appendChild(unlink);
+      actionCell.appendChild(deleteButton);
     }
 
-    tr.append(idCell,countCell,parentCell,action);
-
+    tr.append(idCell, countCell, parentCell, actionCell);
     return tr;
   }
 
-  // KHUNG 1: CHƯA LIÊN KẾT
   unlinkedBody.innerHTML = "";
 
-  if(!all.length){
+  if (!all.length) {
     unlinkedBody.innerHTML =
       '<tr><td colspan="4" class="empty">Chưa có dữ liệu thống kê. Hãy nhập Excel trước.</td></tr>';
-  }else if(!unlinked.length){
+  } else if (!unlinked.length) {
     unlinkedBody.innerHTML =
       '<tr><td colspan="4" class="empty">Không còn đại lý nào chưa liên kết.</td></tr>';
-  }else{
-    for(const [id,count] of unlinked){
-      unlinkedBody.appendChild(
-        createAgentRow(id,count,false)
-      );
+  } else {
+    for (const [id, count] of unlinked) {
+      unlinkedBody.appendChild(createAgentRow(id, count, false));
     }
   }
 
-  // KHUNG 2: ĐÃ LIÊN KẾT
   linkedBody.innerHTML = "";
 
-  if(!all.length){
+  if (!all.length) {
     linkedBody.innerHTML =
       '<tr><td colspan="4" class="empty">Chưa có dữ liệu thống kê.</td></tr>';
-  }else if(!linked.length){
+  } else if (!linked.length) {
     linkedBody.innerHTML =
       '<tr><td colspan="4" class="empty">Chưa có đại lý nào được liên kết.</td></tr>';
-  }else{
-    for(const [id,count] of linked){
-      linkedBody.appendChild(
-        createAgentRow(id,count,true)
-      );
+  } else {
+    for (const [id, count] of linked) {
+      linkedBody.appendChild(createAgentRow(id, count, true));
     }
   }
 }
 
 // ======================================================
-// 8. LƯU LIÊN KẾT CẤP TRÊN
+// 11. LƯU LIÊN KẾT CẤP TRÊN
 // ======================================================
 
-async function saveParentFor(child,parent){
+async function saveParentFor(child, parent) {
   child = cleanId(child);
   parent = cleanId(parent);
 
-  if(!child){
-    msg("hierarchyMessage","Mã đại lý không hợp lệ.",true);
+  if (!child || !parent) {
+    msg("hierarchyMessage", "Hãy nhập đầy đủ mã đại lý và mã cấp trên.", true);
     return;
   }
 
-  if(!parent){
-    msg(
-      "hierarchyMessage",
-      `Hãy nhập mã cấp trên cho đại lý ${child}.`,
-      true
-    );
+  if (child === parent) {
+    msg("hierarchyMessage", "Một đại lý không thể là cấp trên của chính nó.", true);
     return;
   }
 
-  if(parent === child){
-    msg(
-      "hierarchyMessage",
-      "Một đại lý không thể là cấp trên của chính nó.",
-      true
-    );
-    return;
-  }
-
-  // Kiểm tra vòng lặp phân cấp
   const map = parentMap();
   let cursor = parent;
   const seen = new Set([child]);
 
-  while(cursor){
-    if(seen.has(cursor)){
-      msg(
-        "hierarchyMessage",
-        "Liên kết này tạo vòng lặp cấp trên. Hãy kiểm tra lại.",
-        true
-      );
+  while (cursor) {
+    if (seen.has(cursor)) {
+      msg("hierarchyMessage", "Liên kết này tạo vòng lặp cấp trên. Hãy kiểm tra lại.", true);
       return;
     }
 
@@ -668,98 +868,69 @@ async function saveParentFor(child,parent){
     cursor = map.get(cursor) || "";
   }
 
-  const {error} = await db
+  // Không gửi updated_at vì bảng hiện tại của bạn chưa có cột này.
+  const { error } = await db
     .from("agent_hierarchy")
     .upsert({
-      agent_id:child,
-      parent_agent_id:parent,
-      updated_at:new Date().toISOString()
-    },{
-      onConflict:"agent_id"
+      agent_id: child,
+      parent_agent_id: parent
+    }, {
+      onConflict: "agent_id"
     });
 
-  if(error){
-    msg(
-      "hierarchyMessage",
-      `Không lưu được liên kết: ${error.message}`,
-      true
-    );
+  if (error) {
+    msg("hierarchyMessage", `Không lưu được liên kết: ${error.message}`, true);
     return;
   }
 
-  msg(
-    "hierarchyMessage",
-    `Đã liên kết đại lý ${child} trực thuộc ${parent}.`
-  );
+  msg("hierarchyMessage", `Đã liên kết đại lý ${child} trực thuộc ${parent}.`);
 
   await loadHierarchy();
 }
 
 // ======================================================
-// 9. XÓA LIÊN KẾT
+// 12. XÓA LIÊN KẾT
 // ======================================================
 
-async function deleteParent(child){
-  if(!confirm(`Bỏ quan hệ cấp trên của đại lý ${child}?`)){
-    return;
-  }
+async function deleteParent(child) {
+  if (!confirm(`Bỏ quan hệ cấp trên của đại lý ${child}?`)) return;
 
-  const {error} = await db
+  const { error } = await db
     .from("agent_hierarchy")
     .delete()
-    .eq("agent_id",child);
+    .eq("agent_id", child);
 
-  if(error){
-    msg(
-      "hierarchyMessage",
-      `Không xóa được quan hệ: ${error.message}`,
-      true
-    );
+  if (error) {
+    msg("hierarchyMessage", `Không xóa được quan hệ: ${error.message}`, true);
     return;
   }
 
-  msg(
-    "hierarchyMessage",
-    `Đã bỏ quan hệ cấp trên của ${child}.`
-  );
+  msg("hierarchyMessage", `Đã bỏ quan hệ cấp trên của ${child}.`);
 
   await loadHierarchy();
 }
 
 // ======================================================
-// 10. CHUYỂN TRANG
+// 13. TẢI TOÀN BỘ DỮ LIỆU THEO TỪNG ĐỢT
 // ======================================================
 
-function showView(view){
-  $("statsView").classList.toggle("hidden",view !== "stats");
-  $("hierarchyView").classList.toggle("hidden",view !== "hierarchy");
-
-  $("statsTab").classList.toggle("active",view === "stats");
-  $("hierarchyTab").classList.toggle("active",view === "hierarchy");
-}
-
-// ======================================================
-// 11. TẢI TOÀN BỘ DỮ LIỆU THEO TỪNG ĐỢT 500 DÒNG
-// ======================================================
-
-async function loadData(){
-  if(!db || loadingData) return;
+async function loadData() {
+  if (!db || loadingData) return;
 
   loadingData = true;
+  msg("dataMessage", "Đang tải dữ liệu...");
 
-  msg("dataMessage","Đang tải dữ liệu...");
-
-  try{
+  try {
     let allRows = [];
 
-    for(let from = 0; ; from += FETCH_SIZE){
-      const {data,error} = await db
+    for (let from = 0; ; from += FETCH_SIZE) {
+      const { data, error } = await db
         .from("agent_stats")
         .select("*")
-        .order("id",{ascending:true})
-        .range(from,from + FETCH_SIZE - 1);
+        .order("id", { ascending: true })
+        .range(from, from + FETCH_SIZE - 1);
 
-      if(error) throw error;
+      if (error) throw error;
 
       allRows = allRows.concat(data || []);
 
@@ -768,9 +939,7 @@ async function loadData(){
         `Đang tải dữ liệu: ${allRows.length.toLocaleString("vi-VN")} dòng`
       );
 
-      if(!data || data.length < FETCH_SIZE){
-        break;
-      }
+      if (!data || data.length < FETCH_SIZE) break;
     }
 
     currentRows = allRows;
@@ -785,34 +954,29 @@ async function loadData(){
       `Đã tải thành công ${currentRows.length.toLocaleString("vi-VN")} dòng dữ liệu.`
     );
 
-  }catch(error){
-    msg(
-      "dataMessage",
-      `Tải dữ liệu thất bại: ${error.message || error}`,
-      true
-    );
-
+  } catch (error) {
+    msg("dataMessage", `Tải dữ liệu thất bại: ${error.message || error}`, true);
     throw error;
 
-  }finally{
+  } finally {
     loadingData = false;
   }
 }
 
 // ======================================================
-// 12. LỌC DỮ LIỆU
+// 14. LỌC DỮ LIỆU VÀ CẤP DƯỚI
 // ======================================================
 
-function filteredRows(){
-  const rawAgent = cleanId($("agentFilter").value);
+function filteredRows() {
+  const rawAgent = cleanId($("agentFilter")?.value);
   const agent = normalize(rawAgent);
 
-  const from = $("dateFrom").value;
-  const to = $("dateTo").value;
+  const from = $("dateFrom")?.value || "";
+  const to = $("dateTo")?.value || "";
 
   let allowed = null;
 
-  if(rawAgent){
+  if (rawAgent) {
     const exactExists =
       currentRows.some(r => normalize(r.agent_id) === agent) ||
       hierarchyRows.some(r =>
@@ -820,43 +984,42 @@ function filteredRows(){
         normalize(r.parent_agent_id) === agent
       );
 
-    if(exactExists){
+    if (exactExists) {
       allowed = descendantIds(rawAgent);
     }
   }
 
-  return currentRows.filter(r => {
-    const id = String(r.agent_id ?? "");
+  return currentRows.filter(row => {
+    const id = String(row.agent_id ?? "");
 
-    const matchesAgent =
-      !agent ||
+    const matchesAgent = !agent ||
       (allowed ? allowed.has(id) : normalize(id).includes(agent));
 
     return matchesAgent &&
-      (!from || r.report_date >= from) &&
-      (!to || r.report_date <= to);
+      (!from || row.report_date >= from) &&
+      (!to || row.report_date <= to);
   });
 }
 
 // ======================================================
-// 13. HIỂN THỊ THỐNG KÊ
+// 15. HIỂN THỊ THỐNG KÊ
 // ======================================================
 
-function render(){
+function render() {
   const rows = filteredRows();
 
   const body = $("statsBody");
   const foot = $("statsFoot");
 
-  // KPI tính trên toàn bộ dữ liệu sau khi lọc
+  if (!body || !foot) return;
+
   $("kpiAgents").textContent =
     new Set(rows.map(r => r.agent_id)).size.toLocaleString("vi-VN");
 
-  $("kpiRows").textContent =
-    rows.length.toLocaleString("vi-VN");
+  $("kpiRows").textContent = rows.length.toLocaleString("vi-VN");
 
-  const sum = f =>
-    rows.reduce((a,r) => a + (Number(r[f]) || 0),0);
+  const sum = field =>
+    rows.reduce((total, row) => total + (Number(row[field]) || 0), 0);
 
   $("kpiExpense").textContent = fmt(sum("total_expense"));
   $("kpiProfit").textContent = fmt(sum("total_profit"));
@@ -864,56 +1027,45 @@ function render(){
   body.innerHTML = "";
   foot.innerHTML = "";
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(rows.length / PAGE_SIZE)
-  );
+  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
 
-  if(statsPage > totalPages){
-    statsPage = totalPages;
-  }
+  if (statsPage > totalPages) statsPage = totalPages;
+  if (statsPage < 1) statsPage = 1;
 
-  if(statsPage < 1){
-    statsPage = 1;
-  }
-
-  if(!rows.length){
+  if (!rows.length) {
     body.innerHTML =
       '<tr><td colspan="20" class="empty">Không có dữ liệu phù hợp bộ lọc.</td></tr>';
 
-    updateStatsPagination(0,totalPages);
+    updateStatsPagination(0, totalPages);
     return;
   }
 
-  // Chỉ hiển thị 200 dòng hiện tại
   const start = (statsPage - 1) * PAGE_SIZE;
-  const pageRows = rows.slice(start,start + PAGE_SIZE);
-
+  const pageRows = rows.slice(start, start + PAGE_SIZE);
   const displayFields = COLS.map(c => c[0]);
 
-  for(const r of pageRows){
+  for (const row of pageRows) {
     const tr = document.createElement("tr");
 
-    for(const f of displayFields){
+    for (const field of displayFields) {
       const td = document.createElement("td");
+      let value = row[field];
 
-      let v = r[f];
-
-      if(f === "report_date"){
-        v = dateLabel(v);
-      }else if(NUMERIC_FIELDS.includes(f)){
-        v = fmt(v);
-      }else{
-        v = v ?? "";
+      if (field === "report_date") {
+        value = dateLabel(value);
+      } else if (NUMERIC_FIELDS.includes(field)) {
+        value = fmt(value);
+      } else {
+        value = value ?? "";
       }
 
-      td.textContent = v;
+      td.textContent = value;
 
-      if(
-        NUMERIC_FIELDS.includes(f) &&
-        typeof r[f] === "number" &&
-        r[f] < 0
-      ){
+      if (
+        NUMERIC_FIELDS.includes(field) &&
+        typeof row[field] === "number" &&
+        row[field] < 0
+      ) {
         td.classList.add("negative");
       }
 
@@ -923,7 +1075,6 @@ function render(){
     body.appendChild(tr);
   }
 
-  // Dòng tổng trên toàn bộ dữ liệu đã lọc
   const totalFields = new Set([
     "daily_salary",
     "ad_funds",
@@ -942,48 +1093,45 @@ function render(){
     "handling_fee"
   ]);
 
-  const tr = document.createElement("tr");
+  const totalRow = document.createElement("tr");
 
-  for(const [i,f] of displayFields.entries()){
+  for (const [i, field] of displayFields.entries()) {
     const td = document.createElement("td");
 
-    if(i === 0){
+    if (i === 0) {
       td.textContent = "TỔNG";
-    }else if(f === "report_date"){
+    } else if (field === "report_date") {
       td.textContent = rows.length + " dòng";
-    }else if(totalFields.has(f)){
-      const n = sum(f);
-      td.textContent = fmt(n);
-
-      if(n < 0){
-        td.classList.add("negative");
-      }
-    }else if(f === "profit_percent"){
+    } else if (totalFields.has(field)) {
+      const number = sum(field);
+      td.textContent = fmt(number);
+      if (number < 0) td.classList.add("negative");
+    } else if (field === "profit_percent") {
       const denominator = sum("total_expense");
 
       td.textContent = denominator
         ? fmt(sum("total_profit") / denominator * 100) + "%"
         : "—";
-    }else{
+    } else {
       td.textContent = "—";
     }
 
-    tr.appendChild(td);
+    totalRow.appendChild(td);
   }
 
-  foot.appendChild(tr);
+  foot.appendChild(totalRow);
 
-  updateStatsPagination(rows.length,totalPages);
+  updateStatsPagination(rows.length, totalPages);
 }
 
 // ======================================================
-// 14. NÚT PHÂN TRANG
+// 16. PHÂN TRANG
 // ======================================================
 
-function updateStatsPagination(totalRows,totalPages){
+function updateStatsPagination(totalRows, totalPages) {
   let box = $("statsPagination");
 
-  if(!box){
+  if (!box) {
     box = document.createElement("div");
     box.id = "statsPagination";
 
@@ -996,26 +1144,15 @@ function updateStatsPagination(totalRows,totalPages){
       flex-wrap:wrap;
     `;
 
-    $("statsTable").parentElement.insertAdjacentElement(
-      "afterend",
-      box
-    );
+    $("statsTable").parentElement.insertAdjacentElement("afterend", box);
   }
 
-  const start = totalRows
-    ? (statsPage - 1) * PAGE_SIZE + 1
-    : 0;
-
-  const end = Math.min(
-    statsPage * PAGE_SIZE,
-    totalRows
-  );
+  const start = totalRows ? (statsPage - 1) * PAGE_SIZE + 1 : 0;
+  const end = Math.min(statsPage * PAGE_SIZE, totalRows);
 
   box.innerHTML = `
     <button id="statsPrev" class="secondary" type="button"
-      ${statsPage <= 1 ? "disabled" : ""}>
-      Trang trước
-    </button>
+      ${statsPage <= 1 ? "disabled" : ""}>Trang trước</button>
 
     <span>
       Trang ${statsPage} / ${totalPages}
@@ -1024,20 +1161,18 @@ function updateStatsPagination(totalRows,totalPages){
     </span>
 
     <button id="statsNext" class="secondary" type="button"
-      ${statsPage >= totalPages ? "disabled" : ""}>
-      Trang sau
-    </button>
+      ${statsPage >= totalPages ? "disabled" : ""}>Trang sau</button>
   `;
 
-  $("statsPrev").addEventListener("click",() => {
-    if(statsPage > 1){
+  $("statsPrev").addEventListener("click", () => {
+    if (statsPage > 1) {
       statsPage--;
       render();
     }
   });
 
-  $("statsNext").addEventListener("click",() => {
-    if(statsPage < totalPages){
+  $("statsNext").addEventListener("click", () => {
+    if (statsPage < totalPages) {
       statsPage++;
       render();
     }
@@ -1045,69 +1180,83 @@ function updateStatsPagination(totalRows,totalPages){
 }
 
 // ======================================================
-// 15. ĐĂNG NHẬP VÀ KHỞI ĐỘNG
+// 17. CHUYỂN TRANG
 // ======================================================
 
-function setSignedIn(yes){
-  $("loginPanel").classList.toggle("hidden",yes);
-  $("appPanel").classList.toggle("hidden",!yes);
-  $("logoutBtn").classList.toggle("hidden",!yes);
+function showView(view) {
+  $("statsView")?.classList.toggle("hidden", view !== "stats");
+  $("hierarchyView")?.classList.toggle("hidden", view !== "hierarchy");
 
-  $("accountStatus").textContent =
-    yes ? "Đã đăng nhập" : "Chưa đăng nhập";
+  $("statsTab")?.classList.toggle("active", view === "stats");
+  $("hierarchyTab")?.classList.toggle("active", view === "hierarchy");
 }
 
-async function init(){
-  if(!configured()){
-    $("setupNotice").classList.remove("hidden");
-    $("loginPanel").classList.remove("hidden");
+// ======================================================
+// 18. ĐĂNG NHẬP VÀ KHỞI ĐỘNG
+// ======================================================
 
-    $("loginMessage").textContent =
-      "Hãy điền thông tin Supabase trong app.js trước khi sử dụng.";
+function setSignedIn(yes) {
+  $("loginPanel")?.classList.toggle("hidden", yes);
+  $("appPanel")?.classList.toggle("hidden", !yes);
+  $("logoutBtn")?.classList.toggle("hidden", !yes);
 
-    $("loginForm").querySelectorAll("input,button").forEach(el => {
-      el.disabled = true;
-    });
+  if ($("accountStatus")) {
+    $("accountStatus").textContent = yes ? "Đã đăng nhập" : "Chưa đăng nhập";
+  }
+}
 
+async function init() {
+  if (!configured()) {
+    $("setupNotice")?.classList.remove("hidden");
+    msg("loginMessage", "Hãy điền thông tin Supabase trong app.js trước khi sử dụng.");
     return;
   }
 
-  db = window.supabase.createClient(
-    SUPABASE_URL,
-    SUPABASE_ANON_KEY
-  );
+  db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-  $("setupNotice").classList.add("hidden");
+  $("setupNotice")?.classList.add("hidden");
 
-  // Callback chỉ cập nhật trạng thái đăng nhập,
-  // không gọi loadData để tránh tải hai lần.
-  db.auth.onAuthStateChange((_event,session) => {
+  setupBulkHierarchyUI();
+  setupLinkedPanel();
+
+  db.auth.onAuthStateChange((_event, session) => {
     setSignedIn(!!session);
   });
 
-  const {data:{session}} = await db.auth.getSession();
+  const { data, error } = await db.auth.getSession();
+
+  if (error) {
+    msg("loginMessage", error.message, true);
+    return;
+  }
+
+  const session = data?.session;
 
   setSignedIn(!!session);
 
-  if(session){
-    await loadData();
+  if (session) {
+    try {
+      await loadData();
+    } catch (error) {
+      msg("dataMessage", error.message || String(error), true);
+    }
   }
 }
 
 // ======================================================
-// 16. ĐĂNG NHẬP
+// 19. ĐĂNG NHẬP
 // ======================================================
 
-$("loginForm").addEventListener("submit",async e => {
-  e.preventDefault();
+$("loginForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
 
-  if(!db) return;
+  if (!db) return;
 
-  msg("loginMessage","Đang đăng nhập...");
+  msg("loginMessage", "Đang đăng nhập...");
 
-  const {error} = await db.auth.signInWithPassword({
-    email:$("email").value.trim(),
-    password:$("password").value
+  const { error } = await db.auth.signInWithPassword({
+    email: $("email").value.trim(),
+    password: $("password").value
   });
 
   msg(
@@ -1116,27 +1265,27 @@ $("loginForm").addEventListener("submit",async e => {
     !!error
   );
 
-  if(!error){
-    try{
+  if (!error) {
+    try {
       await loadData();
-    }catch(err){
-      msg("dataMessage",err.message || String(err),true);
+    } catch (err) {
+      msg("dataMessage", err.message || String(err), true);
     }
   }
 });
 
 // ======================================================
-// 17. TẠO TÀI KHOẢN
+// 20. TẠO TÀI KHOẢN
 // ======================================================
 
-$("signupBtn").addEventListener("click",async() => {
-  if(!db) return;
+$("signupBtn")?.addEventListener("click", async () => {
+  if (!db) return;
 
-  msg("loginMessage","Đang tạo tài khoản...");
+  msg("loginMessage", "Đang tạo tài khoản...");
 
-  const {data,error} = await db.auth.signUp({
-    email:$("email").value.trim(),
-    password:$("password").value
+  const { data, error } = await db.auth.signUp({
+    email: $("email").value.trim(),
+    password: $("password").value
   });
 
   msg(
@@ -1144,66 +1293,56 @@ $("signupBtn").addEventListener("click",async() => {
     error
       ? error.message
       : (
-          data.session
-            ? "Tạo tài khoản thành công."
-            : "Đã gửi email xác nhận nếu dự án yêu cầu xác minh."
-        ),
+        data.session
+          ? "Tạo tài khoản thành công."
+          : "Đã gửi email xác nhận nếu dự án yêu cầu xác minh."
+      ),
     !!error
   );
 
-  if(!error && data.session){
+  if (!error && data.session) {
     await loadData();
   }
 });
 
 // ======================================================
-// 18. ĐĂNG XUẤT
+// 21. ĐĂNG XUẤT
 // ======================================================
 
-$("logoutBtn").addEventListener("click",async() => {
-  if(db){
-    await db.auth.signOut();
-  }
+$("logoutBtn")?.addEventListener("click", async () => {
+  if (db) await db.auth.signOut();
 });
 
 // ======================================================
-// 19. NHẬP FILE EXCEL
+// 22. NHẬP FILE EXCEL THỐNG KÊ
 // ======================================================
 
-$("excelFile").addEventListener("change",async e => {
-  const file = e.target.files?.[0];
+$("excelFile")?.addEventListener("change", async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
 
-  if(!file) return;
-
-  try{
-    msg("dataMessage","Đang đọc file Excel...");
-
+  try {
+    msg("dataMessage", "Đang đọc file Excel...");
     await importExcel(file);
-
-  }catch(err){
-    msg(
-      "dataMessage",
-      `Nhập Excel thất bại: ${err.message || err}`,
-      true
-    );
-
-  }finally{
-    e.target.value = "";
+  } catch (error) {
+    msg("dataMessage", `Nhập Excel thất bại: ${error.message || error}`, true);
+  } finally {
+    event.target.value = "";
   }
 });
 
 // ======================================================
-// 20. BỘ LỌC
+// 23. BỘ LỌC
 // ======================================================
 
-["agentFilter","dateFrom","dateTo"].forEach(id => {
-  $(id).addEventListener("input",() => {
+["agentFilter", "dateFrom", "dateTo"].forEach(id => {
+  $(id)?.addEventListener("input", () => {
     statsPage = 1;
     render();
   });
 });
 
-$("clearFiltersBtn").addEventListener("click",() => {
+$("clearFiltersBtn")?.addEventListener("click", () => {
   $("agentFilter").value = "";
   $("dateFrom").value = "";
   $("dateTo").value = "";
@@ -1213,52 +1352,48 @@ $("clearFiltersBtn").addEventListener("click",() => {
 });
 
 // ======================================================
-// 21. CÁC NÚT TẢI LẠI VÀ CHUYỂN TRANG
+// 24. TẢI LẠI VÀ CHUYỂN TRANG
 // ======================================================
 
-$("refreshBtn").addEventListener("click",async() => {
-  try{
+$("refreshBtn")?.addEventListener("click", async () => {
+  try {
     await loadData();
-  }catch(error){
-    msg("dataMessage",error.message || String(error),true);
+  } catch (error) {
+    msg("dataMessage", error.message || String(error), true);
   }
 });
 
-$("statsTab").addEventListener("click",() => {
-  showView("stats");
-});
+$("statsTab")?.addEventListener("click", () => showView("stats"));
 
-$("hierarchyTab").addEventListener("click",() => {
+$("hierarchyTab")?.addEventListener("click", () => {
   showView("hierarchy");
+  renderHierarchy();
 });
 
-$("refreshHierarchyBtn").addEventListener("click",loadHierarchy);
+$("refreshHierarchyBtn")?.addEventListener("click", loadHierarchy);
 
-// Tìm kiếm áp dụng cho cả hai khung quan hệ
-$("unassignedSearch").addEventListener("input",renderAgentLinks);
+$("unassignedSearch")?.addEventListener("input", renderAgentLinks);
 
 // ======================================================
-// 22. XUẤT EXCEL
+// 25. XUẤT EXCEL THỐNG KÊ
 // ======================================================
 
-$("exportBtn").addEventListener("click",() => {
+$("exportBtn")?.addEventListener("click", () => {
   const rows = filteredRows();
 
-  if(!rows.length){
-    msg("dataMessage","Không có dữ liệu để xuất.",true);
+  if (!rows.length) {
+    msg("dataMessage", "Không có dữ liệu để xuất.", true);
     return;
   }
 
-  const aoa = [
-    COLS.map(c => c[1][0])
-  ];
+  const aoa = [COLS.map(c => c[1][0])];
 
-  rows.forEach(r => {
+  rows.forEach(row => {
     aoa.push(
-      COLS.map(([f]) =>
-        f === "report_date"
-          ? dateLabel(r[f])
-          : r[f] ?? ""
+      COLS.map(([field]) =>
+        field === "report_date"
+          ? dateLabel(row[field])
+          : row[field] ?? ""
       )
     );
   });
@@ -1266,20 +1401,13 @@ $("exportBtn").addEventListener("click",() => {
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   const wb = XLSX.utils.book_new();
 
-  XLSX.utils.book_append_sheet(
-    wb,
-    ws,
-    "ThongKe"
-  );
+  XLSX.utils.book_append_sheet(wb, ws, "ThongKe");
 
-  XLSX.writeFile(
-    wb,
-    "thong-ke-dai-ly.xlsx"
-  );
+  XLSX.writeFile(wb, "thong-ke-dai-ly.xlsx");
 });
 
 // ======================================================
-// 23. CHẠY WEBSITE
+// 26. CHẠY WEBSITE
 // ======================================================
 
 init();
