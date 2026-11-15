@@ -1197,9 +1197,14 @@ function render() {
     appendSubtotal(agentId, agentRows);
   }
 
-  // Dòng TỔNG CHUNG:
-  // Cộng các cột lương, quảng cáo, hoa hồng, video, chi phí và số lượng gửi/rút.
-  // Các cột còn lại lấy theo tổng của đại lý đứng đầu danh sách.
+  // Dòng TỔNG CHUNG theo quy tắc:
+  // 1) 8 cột hoạt động: cộng tất cả đại lý trong kết quả lọc.
+  // 2) Tổng tài sản, Tổng rút, Phí thủ tục: ưu tiên ID tìm kiếm;
+  //    nếu ID đó không có số liệu thì lấy cấp dưới trực tiếp;
+  //    nếu cấp 1 cũng không có thì lấy cấp 2.
+  // 3) Chênh lệch lưu trữ = Tổng tài sản - Tổng rút.
+  // 4) Tổng lãi = Chênh lệch lưu trữ - Tổng chi phí.
+
   const grandTotal = document.createElement("tr");
   grandTotal.className = "grand-total-row";
 
@@ -1214,25 +1219,61 @@ function render() {
     "level2_deposit"
   ]);
 
-  const firstAgentRows = sortedGroups.length ? sortedGroups[0][1] : [];
-
-  // Khi tìm một mã đại lý chính xác, chỉ lấy các đại lý liên kết trực tiếp
-  // bên dưới mã đó để cộng các cột tổng hợp; không cộng cấp dưới của cấp dưới.
   const searchedAgentId = cleanId($("agentFilter")?.value);
   const hasExactSearchedAgent = searchedAgentId &&
     currentRows.some(row => cleanId(row.agent_id) === searchedAgentId);
 
-  const directChildIds = hasExactSearchedAgent
-    ? new Set(
-        hierarchyRows
-          .filter(link => cleanId(link.parent_agent_id) === searchedAgentId)
-          .map(link => cleanId(link.agent_id))
-      )
-    : null;
+  // Lấy dữ liệu theo ngày đang lọc, không bị giới hạn bởi việc tìm cấp dưới.
+  const fromDate = $("dateFrom")?.value || "";
+  const toDate = $("dateTo")?.value || "";
+  const dateRows = currentRows.filter(row =>
+    (!fromDate || row.report_date >= fromDate) &&
+    (!toDate || row.report_date <= toDate)
+  );
 
-  const directChildRows = directChildIds
-    ? visibleRows.filter(row => directChildIds.has(cleanId(row.agent_id)))
-    : visibleRows;
+  const rootId = hasExactSearchedAgent
+    ? searchedAgentId
+    : (sortedGroups.length ? sortedGroups[0][0] : "");
+
+  const rootRows = dateRows.filter(row => cleanId(row.agent_id) === rootId);
+
+  const level1Ids = new Set(
+    hierarchyRows
+      .filter(link => cleanId(link.parent_agent_id) === rootId)
+      .map(link => cleanId(link.agent_id))
+  );
+
+  const level1Rows = dateRows.filter(row => level1Ids.has(cleanId(row.agent_id)));
+
+  const level2Ids = new Set(
+    hierarchyRows
+      .filter(link => level1Ids.has(cleanId(link.parent_agent_id)))
+      .map(link => cleanId(link.agent_id))
+  );
+
+  const level2Rows = dateRows.filter(row => level2Ids.has(cleanId(row.agent_id)));
+
+  function hasFieldData(items, field) {
+    return items.some(row => {
+      const value = row[field];
+      return value !== null &&
+        value !== undefined &&
+        value !== "" &&
+        Number.isFinite(Number(value)) &&
+        Number(value) !== 0;
+    });
+  }
+
+  function fallbackRowsForField(field) {
+    if (hasFieldData(rootRows, field)) return rootRows;
+    if (hasFieldData(level1Rows, field)) return level1Rows;
+    if (hasFieldData(level2Rows, field)) return level2Rows;
+    return [];
+  }
+
+  let grandAssets = 0;
+  let grandWithdrawals = 0;
+  let grandHandlingFee = 0;
 
   for (const [i, field] of displayFields.entries()) {
     const td = document.createElement("td");
@@ -1242,34 +1283,48 @@ function render() {
     } else if (field === "report_date") {
       td.textContent = `${visibleRows.length} dòng`;
     } else if (additiveGrandFields.has(field)) {
-      const number = sum(directChildRows, field);
+      const number = sum(visibleRows, field);
       td.textContent = fmt(number);
       if (number < 0) td.classList.add("negative");
-    } else if (field === "total_assets" || field === "total_withdrawals") {
-      // Tổng nạp (Tổng tài sản) và Tổng rút chỉ cộng các đại lý trực thuộc trực tiếp.
-      // Không tính đại lý gốc hoặc các cấp dưới sâu hơn.
-      const number = sum(directChildRows, field);
+    } else if (field === "total_assets") {
+      grandAssets = sum(fallbackRowsForField("total_assets"), "total_assets");
+      td.textContent = fmt(grandAssets);
+      if (grandAssets < 0) td.classList.add("negative");
+    } else if (field === "total_withdrawals") {
+      grandWithdrawals = sum(
+        fallbackRowsForField("total_withdrawals"),
+        "total_withdrawals"
+      );
+      td.textContent = fmt(grandWithdrawals);
+      if (grandWithdrawals < 0) td.classList.add("negative");
+    } else if (field === "handling_fee") {
+      grandHandlingFee = sum(
+        fallbackRowsForField("handling_fee"),
+        "handling_fee"
+      );
+      td.textContent = fmt(grandHandlingFee);
+      if (grandHandlingFee < 0) td.classList.add("negative");
+    } else if (field === "storage_diff") {
+      const number = grandAssets - grandWithdrawals;
       td.textContent = fmt(number);
       if (number < 0) td.classList.add("negative");
     } else if (field === "total_profit") {
-      // Tổng lãi chung = Chênh lệch lưu trữ tổng chung - Tổng chi phí tổng chung.
-      // Chênh lệch lưu trữ đang lấy theo tổng của đại lý đứng đầu.
-      const grandStorageDiff = sum(firstAgentRows, "storage_diff");
+      const grandStorageDiff = grandAssets - grandWithdrawals;
       const grandTotalExpense = sum(visibleRows, "total_expense");
       const number = grandStorageDiff - grandTotalExpense;
       td.textContent = fmt(number);
       if (number < 0) td.classList.add("negative");
+    } else if (field === "profit_percent") {
+      const grandStorageDiff = grandAssets - grandWithdrawals;
+      const grandTotalExpense = sum(visibleRows, "total_expense");
+      const grandProfit = grandStorageDiff - grandTotalExpense;
+      td.textContent = grandTotalExpense
+        ? fmt(grandProfit / grandTotalExpense * 100) + "%"
+        : "—";
     } else if (totalFields.has(field)) {
-      const number = sum(firstAgentRows, field);
+      const number = sum(rootRows, field);
       td.textContent = fmt(number);
       if (number < 0) td.classList.add("negative");
-    } else if (field === "profit_percent") {
-      const denominator = sum(visibleRows, "total_expense");
-      const grandStorageDiff = sum(firstAgentRows, "storage_diff");
-      const grandProfit = grandStorageDiff - denominator;
-      td.textContent = denominator
-        ? fmt(grandProfit / denominator * 100) + "%"
-        : "—";
     } else {
       td.textContent = "";
     }
