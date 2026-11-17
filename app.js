@@ -300,61 +300,78 @@ async function importExcel(file) {
   if (!db) throw new Error("尚未配置Supabase。");
   if (importingExcel) throw new Error("另一个文件正在导入，请稍候。");
 
-  // Đọc và kiểm tra trước khi xóa dữ liệu cũ.
   const records = parseWorkbook(await file.arrayBuffer());
-
-  if (!records.length) {
-    throw new Error("Excel文件中没有有效数据。");
-  }
+  if (!records.length) throw new Error("Excel文件中没有有效数据。");
 
   const confirmed = confirm(
-    `警告：将替换全部旧数据\n\n` +
-    `File mới: ${file.name}\n` +
-    `准备导入的记录数： ${records.length.toLocaleString("vi-VN")}\n\n` +
-    `agent_stats中的旧数据将被替换。\n` +
-    `agent_hierarchy中的上下级关系将保留。\n\n` +
-    `确定要继续吗？`
+    `警告：将用新数据替换全部旧数据\n\n` +
+    `文件：${file.name}\n` +
+    `准备导入：${records.length.toLocaleString("zh-CN")} 条记录\n\n` +
+    `旧数据只会在新数据全部上传成功后才被替换。\n` +
+    `导入失败时，现有数据保持不变。\n` +
+    `代理上下级关系将保留。\n\n确定继续吗？`
   );
-
   if (!confirmed) {
     msg("dataMessage", "已取消导入，旧数据保持不变。");
     return;
   }
 
   importingExcel = true;
-
   const fileInput = $("excelFile");
   if (fileInput) fileInput.disabled = true;
 
+  const BATCH_SIZE = 500;
+  const importId = crypto.randomUUID();
+  let uploaded = 0;
+  let finalized = false;
+
   try {
-    msg("dataMessage", `正在导入 ${records.length.toLocaleString("vi-VN")} 条记录...`);
+    for (let start = 0; start < records.length; start += BATCH_SIZE) {
+      const batch = records.slice(start, start + BATCH_SIZE);
+      const { error } = await db.rpc("stage_agent_stats", {
+        p_import_id: importId,
+        p_start_index: start,
+        p_rows: batch
+      });
+      if (error) throw error;
 
-    // RPC xóa dữ liệu cũ và nhập dữ liệu mới trong cùng giao dịch.
-    const { data, error } = await db.rpc("replace_agent_stats", {
-      p_rows: records
+      uploaded = Math.min(start + batch.length, records.length);
+      msg(
+        "dataMessage",
+        `正在上传：${uploaded.toLocaleString("zh-CN")} / ${records.length.toLocaleString("zh-CN")} 条（${Math.floor(uploaded / records.length * 100)}%）`
+      );
+    }
+
+    msg("dataMessage", "数据上传完成，正在安全替换正式数据，请勿关闭页面...");
+    const { data, error } = await db.rpc("finalize_agent_stats", {
+      p_import_id: importId,
+      p_expected_count: records.length
     });
-
     if (error) throw error;
+    finalized = true;
 
     currentRows = [];
     hierarchyRows = [];
-
     await loadData();
 
     msg(
       "dataMessage",
-      `替换成功！已导入 ${Number(data).toLocaleString("vi-VN")} 条记录，文件： ${file.name}.`
+      `导入成功！已更新 ${Number(data).toLocaleString("zh-CN")} 条记录。文件：${file.name}`
     );
-
   } catch (error) {
+    if (!finalized) {
+      try {
+        await db.rpc("discard_agent_stats_import", { p_import_id: importId });
+      } catch (cleanupError) {
+        console.warn("暂存数据清理失败：", cleanupError);
+      }
+    }
     msg(
       "dataMessage",
-      `导入失败： ${error.message || error}. 如果RPC出错，旧数据将保持不变。`,
+      `导入失败：${error.message || error}。正式数据在最终提交前不会被更改；已上传暂存 ${uploaded.toLocaleString("zh-CN")} / ${records.length.toLocaleString("zh-CN")} 条。`,
       true
     );
-
     throw error;
-
   } finally {
     importingExcel = false;
     if (fileInput) fileInput.disabled = false;
